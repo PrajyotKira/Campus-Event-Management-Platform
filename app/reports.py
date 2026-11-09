@@ -3,26 +3,70 @@
 These are plain functions (not routes) so tests and the profiler can call them
 directly inside an app context.
 
-NOTE: this is the deliberately NAIVE version. Each function first fetches a list
-of rows, then runs one more COUNT query per row inside a Python loop. With N
-events that is N + 1 queries: the "N+1 query problem". It gives the right
-answers but gets slow as the data grows. profiling/run_profile.py measures it.
+OPTIMISED version. The first (naive) version fetched all events and then ran
+one COUNT query per event in a Python loop: 2000 events meant 2001 queries
+(the "N+1 query problem"). Now each report is ONE query that uses
+JOIN + GROUP BY, so the database does all the counting in a single pass.
+See profiling/RESULTS.md for the before/after measurements.
+
+The SQL is kept in module-level constants so profiling/explain.py can show
+the query plan for exactly the same queries.
 """
 from .db import get_db
 
 
 def percent(part, whole):
-    """part as a percentage of whole, rounded to 1 decimal place (0 if whole is 0)."""
+    """part as a percentage of whole, rounded to 1 decimal place (0 if whole is 0).
+
+    Done in Python (not SQL ROUND) so the numbers are rounded exactly as in the
+    first version: Python and SQLite round halves differently (12.25 -> 12.2 vs 12.3).
+    """
     if whole == 0:
         return 0.0
     return round(100 * part / whole, 1)
 
 
-def count_registrations(event_id):
-    """How many students registered for one event. ONE SQL query per call."""
-    return get_db().execute(
-        "SELECT COUNT(*) FROM registrations WHERE event_id = ?", (event_id,)
-    ).fetchone()[0]
+# One row per event. LEFT JOIN keeps events with no registrations (COUNT(r.id) = 0).
+EVENT_STATS_SQL = """
+SELECT e.id, e.title, e.category, e.start_time, e.capacity,
+       COUNT(r.id) AS registered
+FROM events e
+LEFT JOIN registrations r ON r.event_id = e.id
+GROUP BY e.id
+ORDER BY registered DESC, e.start_time, e.id
+"""
+
+# One row per category. The JOIN repeats each event once per registration,
+# so we count DISTINCT event ids to count each event only once.
+CATEGORIES_SQL = """
+SELECT e.category,
+       COUNT(DISTINCT e.id) AS events,
+       COUNT(r.id) AS registrations
+FROM events e
+LEFT JOIN registrations r ON r.event_id = e.id
+GROUP BY e.category
+ORDER BY registrations DESC, e.category
+"""
+
+# One row per venue. The inner query (a "derived table") first counts the
+# registrations of each event; the outer query then adds those up per venue.
+# Doing it in two steps stops SUM(capacity) from being multiplied by the
+# number of registrations. LEFT JOIN keeps venues with no events.
+VENUES_SQL = """
+SELECT v.id, v.name, v.location,
+       COUNT(e.id) AS events,
+       COALESCE(SUM(e.registered), 0) AS registrations,
+       COALESCE(SUM(e.capacity), 0) AS seats_offered
+FROM venues v
+LEFT JOIN (
+    SELECT ev.id, ev.venue_id, ev.capacity, COUNT(r.id) AS registered
+    FROM events ev
+    LEFT JOIN registrations r ON r.event_id = ev.id
+    GROUP BY ev.id
+) AS e ON e.venue_id = v.id
+GROUP BY v.id
+ORDER BY registrations DESC, v.name
+"""
 
 
 def event_stats():
@@ -31,25 +75,11 @@ def event_stats():
     Returns a list of dicts: id, title, category, start_time, capacity,
     registered, fill_rate.
     """
-    events = get_db().execute(
-        "SELECT id, title, category, start_time, capacity FROM events"
-    ).fetchall()
-
     stats = []
-    for event in events:
-        registered = count_registrations(event["id"])  # N+1: one query per event
-        stats.append({
-            "id": event["id"],
-            "title": event["title"],
-            "category": event["category"],
-            "start_time": event["start_time"],
-            "capacity": event["capacity"],
-            "registered": registered,
-            "fill_rate": percent(registered, event["capacity"]),
-        })
-
-    # Most registrations first; ties broken by start time, then id.
-    stats.sort(key=lambda s: (-s["registered"], s["start_time"], s["id"]))
+    for row in get_db().execute(EVENT_STATS_SQL).fetchall():
+        event = dict(row)  # sqlite3.Row -> normal dict so we can add a key
+        event["fill_rate"] = percent(event["registered"], event["capacity"])
+        stats.append(event)
     return stats
 
 
@@ -58,18 +88,7 @@ def popular_categories():
 
     Returns a list of dicts: category, events, registrations.
     """
-    events = get_db().execute("SELECT id, category FROM events").fetchall()
-
-    totals = {}  # category name -> {"category": ..., "events": ..., "registrations": ...}
-    for event in events:
-        if event["category"] not in totals:
-            totals[event["category"]] = {
-                "category": event["category"], "events": 0, "registrations": 0,
-            }
-        totals[event["category"]]["events"] += 1
-        totals[event["category"]]["registrations"] += count_registrations(event["id"])  # N+1
-
-    return sorted(totals.values(), key=lambda c: (-c["registrations"], c["category"]))
+    return [dict(row) for row in get_db().execute(CATEGORIES_SQL).fetchall()]
 
 
 def venue_utilisation():
@@ -80,29 +99,9 @@ def venue_utilisation():
     Returns a list of dicts: id, name, location, events, registrations,
     seats_offered, utilisation. Busiest venue first.
     """
-    conn = get_db()
-    venues = conn.execute("SELECT id, name, location FROM venues").fetchall()
-
     results = []
-    for venue in venues:
-        # One query per venue to get its events...
-        events = conn.execute(
-            "SELECT id, capacity FROM events WHERE venue_id = ?", (venue["id"],)
-        ).fetchall()
-        registrations = 0
-        seats_offered = 0
-        for event in events:
-            registrations += count_registrations(event["id"])  # ...and one per event
-            seats_offered += event["capacity"]
-        results.append({
-            "id": venue["id"],
-            "name": venue["name"],
-            "location": venue["location"],
-            "events": len(events),
-            "registrations": registrations,
-            "seats_offered": seats_offered,
-            "utilisation": percent(registrations, seats_offered),
-        })
-
-    results.sort(key=lambda v: (-v["registrations"], v["name"]))
+    for row in get_db().execute(VENUES_SQL).fetchall():
+        venue = dict(row)
+        venue["utilisation"] = percent(venue["registrations"], venue["seats_offered"])
+        results.append(venue)
     return results
