@@ -19,7 +19,9 @@ def create_app(test_config=None):
     app.config.from_mapping(
         # SECRET_KEY signs the session cookie. Use a real secret outside development.
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-change-me"),
-        DATABASE=os.path.join(app.instance_path, "campus.db"),
+        # The CAMPUS_DB environment variable can point to another database file
+        # (scripts/profile.sh uses this so profiling never touches your real data).
+        DATABASE=os.environ.get("CAMPUS_DB", os.path.join(app.instance_path, "campus.db")),
         # The browser won't send our login cookie with form POSTs that come from
         # other websites, so another site can't register/cancel/delete on a user's behalf.
         SESSION_COOKIE_SAMESITE="Lax",
