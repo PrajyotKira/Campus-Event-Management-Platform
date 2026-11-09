@@ -1,0 +1,26 @@
+{# Homepage. "extends" reuses the layout from base.html and fills in its blocks. #}
+{% extends "base.html" %}
+
+{% block title %}Home | Campus Events{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>Welcome to Campus Events</h1>
+    <p>Find, join and manage events happening around campus.</p>
+</section>
+
+<section class="stats">
+    <div class="card">
+        <span class="stat-number">{{ stats.events }}</span>
+        <span class="stat-label">Events</span>
+    </div>
+    <div class="card">
+        <span class="stat-number">{{ stats.venues }}</span>
+        <span class="stat-label">Venues</span>
+    </div>
+    <div class="card">
+        <span class="stat-number">{{ stats.students }}</span>
+        <span class="stat-label">Students</span>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,143 @@
+/* Campus Events: hand-written stylesheet (no frameworks) */
+
+/* ---------- Colours and sizes in one place (CSS custom properties) ---------- */
+:root {
+    --primary: #1d4ed8;
+    --primary-dark: #1e3a8a;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --bg: #f3f4f6;
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+    --success: #15803d;
+    --error: #b91c1c;
+    --radius: 8px;
+}
+
+/* ---------- Base ---------- */
+* {
+    box-sizing: border-box;   /* width includes padding and border */
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.5;
+    /* Flex column so the footer stays at the bottom on short pages */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+a {
+    color: var(--primary);
+}
+
+/* Centred column with side padding, used by header, main and footer */
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* ---------- Header ---------- */
+.site-header {
+    background: var(--primary-dark);
+    color: #fff;
+}
+
+.header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+}
+
+.logo {
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.nav a {
+    color: #fff;
+    text-decoration: none;
+    margin-left: 1.2rem;
+}
+
+.nav a:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Flash messages ---------- */
+.flash {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    border-left: 5px solid var(--primary);
+}
+
+.flash-success { border-left-color: var(--success); }
+.flash-error   { border-left-color: var(--error); }
+
+/* ---------- Homepage ---------- */
+.hero {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.hero h1 {
+    margin-bottom: 0.3rem;
+}
+
+.hero p {
+    color: var(--muted);
+}
+
+/* Grid: as many 200px+ columns as fit; drops to one column on phones */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.stat-label {
+    color: var(--muted);
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 1rem 0;
+    text-align: center;
+}

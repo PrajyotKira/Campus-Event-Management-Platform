@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# Each page can set its own title by overriding the "title" block #}
+    <title>{% block title %}Campus Events{% endblock %}</title>
+    <!-- url_for builds the correct URL to app/static/style.css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="logo" href="{{ url_for('index') }}">Campus Events</a>
+            <nav class="nav">
+                <a href="{{ url_for('index') }}">Home</a>
+                <!-- Events, Login, Register and Admin links come in later phases -->
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Flash messages: short one-time notices like "Registered successfully" -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <!-- Child templates put their page content here -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">Campus Event Management Platform</div>
+    </footer>
+</body>
+</html>
