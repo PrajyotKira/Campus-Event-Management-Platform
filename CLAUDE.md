@@ -99,17 +99,15 @@ Gotcha: Jinja parses `{% %}` even inside HTML `<!-- -->` comments, so use `{# #}
       SQL calls 6016 -> 6). 45 tests.
 - [x] Phase 5: README.md, report/report.tex (article), report/slides.tex (Beamer Madrid,
       16:9, 12 slides), scripts/build_docs.sh (latexmk -> pdflatex x2 -> Overleaf message).
-      LaTeX was NOT installed when written, so the .tex files were only statically checked,
-      never compiled: compile on Overleaf / MiKTeX and fix any errors.
+      Now compiled (TeX Live): report 21 pages, slides 11, no overfull boxes.
+- [x] Phase 6: docs/ with campusdoc.sty + user_manual, installation_guide, developer_guide,
+      test_report (.tex + .pdf); build_docs.sh builds all six documents.
 
 ## Docs notes
-- report/figures/ file names do NOT match their content: events_search.png and
-  admin_events.png show the Reports page; reports_page.png is the VS Code terminal
-  (test.sh 44 passed + baseline timings); before_snakeviz.png / snakeviz.png /
-  snakeviz1.png are the BEFORE profile; event_detail, my_registrations, clash_error,
-  reports_final are more rows of the reports table (unused).
-- report.tex uses \screenshot{file}{width}{hint}: shows a placeholder box until these
-  exist: figures/search_page.png, detail_page.png, my_registrations_page.png,
-  clash_error_page.png, after_snakeviz.png.
+- report/figures/ names now match content: search_page, detail_page, my_registrations_page,
+  clash_error_page, reports_overview (categories + venue utilisation), reports_per_event,
+  test_run (VS Code terminal, 44 passed + baseline timings), before_snakeviz /
+  snakeviz / before_snakeviz_callers (BEFORE profile), after_snakeviz.
+- docs/*.tex use \graphicspath{../report/figures/} and \shot{file}{width} from campusdoc.sty.
 - \code{} uses \detokenize: write underscores plainly inside it (no \_), never put % in it.
-- report.tex has red \todo{} markers (roll number, AI usage "what I did") for the student.
+- report.tex defines \todo{} but no markers remain.
