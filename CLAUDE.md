@@ -44,15 +44,23 @@ Flask CLI commands (always run as `python -m flask --app app ...`; the `flask.ex
 launcher is blocked on this machine): `init-db`, `create-admin` (in `app/db.py`),
 `seed --events N --students M` (in `app/seed.py`, fixed random seed, keeps admins).
 
-Blueprints: `auth` (/auth/register, /auth/login, /auth/logout), `events` (/events/,
-/events/<id>), `admin` (/admin/, protected by `admin_required` from `auth.py`).
+Blueprints:
+- `auth`: /auth/register, /auth/login, /auth/logout; defines `admin_required`.
+- `events` (no url_prefix): /events/, /events/<id>, POST /events/<id>/register,
+  POST /events/<id>/cancel (form field return_to=my), /my-registrations.
+- `admin` (/admin, all @admin_required): dashboard, venues CRUD, events CRUD,
+  /admin/events/<id>/participants and participants.csv. `find_clash()`,
+  `read_event_form()`, `read_venue_form()`, `to_db_time()` are plain helpers there.
+All data-changing actions are POST forms; `SESSION_COOKIE_SAMESITE="Lax"` in config.
 Times are stored as TEXT 'YYYY-MM-DD HH:MM'. `CATEGORIES` list lives in `app/events.py`.
 
 Demo logins after `./scripts/setup.sh && ./scripts/seed.sh`:
 admin `admin@campus.local` / `admin123`, students `student1..100@campus.local` / `student123`.
 
 Tests: `pytest.ini` sets `pythonpath = .`; fixtures in `tests/conftest.py`
-(`app` on a tmp_path DB, `client`, `auth`, `admin_user`, `sample_events`).
+(`app` on a tmp_path DB, `client`, `auth`, `admin_user`, `sample_events` -> {title: id},
+`student_client`, `admin_client`). Test files: test_auth, test_events,
+test_registrations, test_admin (38 tests at end of phase 3).
 Gotcha: Jinja parses `{% %}` even inside HTML `<!-- -->` comments, so use `{# #}`.
 
 ## Features (planned)
@@ -66,8 +74,9 @@ Gotcha: Jinja parses `{% %}` even inside HTML `<!-- -->` comments, so use `{# #}
 - [x] Phase 1: skeleton, schema, setup/run scripts, app factory, homepage
 - [x] Phase 2: auth (Flask-Login, admin_required), events browse/search/detail,
       seed.sh (Faker), first pytest tests + test.sh, placeholder admin dashboard
-- [ ] Phase 3: student register/cancel (capacity check) + My registrations;
-      admin CRUD events & venues, clash check, participant CSV export, reports
-- [ ] Phase 4: more tests (registrations, capacity, clashes, admin CRUD)
-- [ ] Phase 5: profiling (cProfile) + indexes, before/after
-- [ ] Phase 6: README, LaTeX report, Beamer slides
+- [x] Phase 3: student register/cancel (full / started / duplicate checks) + My registrations;
+      admin dashboard counts, venues & events CRUD, clash check, participants + CSV export;
+      tests for all of it
+- [ ] Phase 4: admin reports page (registrations per event, fill rate %, popular categories,
+      venue utilisation) + profiling (cProfile, profile.sh) + indexes, before/after
+- [ ] Phase 5: README, LaTeX report, Beamer slides
