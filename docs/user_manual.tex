@@ -1,0 +1,419 @@
+% =====================================================================
+%  User Manual: how students and admins use the web application.
+%  Build: ./scripts/build_docs.sh   (or compile in docs/ with pdflatex)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+\usepackage{campusdoc}
+
+\begin{document}
+
+\makedoctitle{User Manual}{How students and administrators use Campus Events}{CEMP-UM-01}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{About this manual}
+
+Campus Events is a website where \textbf{students} find campus events and sign up for them, and
+\textbf{administrators} (admins) manage events, venues, participant lists and reports. This manual
+explains every screen from the point of view of the person using it. It does not assume any
+programming knowledge.
+
+\begin{itemize}
+  \item Section~\ref{sec:start} covers getting started: opening the site, creating an account and logging in.
+  \item Section~\ref{sec:student} is for \textbf{students}.
+  \item Section~\ref{sec:admin} is for \textbf{admins}.
+  \item Section~\ref{sec:messages} lists every message the site can show and what to do about it.
+\end{itemize}
+
+\begin{note}[Who installs the site?]
+This manual assumes the site is already running. Installing it is described in the
+\emph{Installation \& Operations Guide}. On a computer where it has been set up, the site is
+usually started with \code{./scripts/run.sh} and opened at \url{http://127.0.0.1:5000}.
+\end{note}
+
+\subsection{Roles at a glance}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}X c c c@{}}
+\toprule
+\textbf{What you can do} & \textbf{Visitor} & \textbf{Student} & \textbf{Admin} \\
+\midrule
+See the home page and browse / search upcoming events & \checkmark & \checkmark & \checkmark \\
+Open an event's detail page                            & \checkmark & \checkmark & \checkmark \\
+Register for an event and cancel a registration        &            & \checkmark &            \\
+See \menu{My registrations}                             &            & \checkmark &            \\
+Open the admin dashboard                                &            &            & \checkmark \\
+Create, edit and delete venues and events               &            &            & \checkmark \\
+See participant lists and export them as CSV            &            &            & \checkmark \\
+See reports                                             &            &            & \checkmark \\
+\bottomrule
+\end{tabularx}
+\caption{What each type of user can do.}
+\end{table}
+
+A \textbf{visitor} is anyone who has not logged in. Anyone can create a \textbf{student} account.
+\textbf{Admin} accounts cannot be created through the website; they are made by whoever installs the
+site (Installation Guide, Section ``Admin account'').
+
+% =====================================================================
+\section{Getting started}
+\label{sec:start}
+
+\subsection{The navigation bar}
+
+Every page has the same blue bar at the top. Its links change depending on who is logged in:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{You are\dots} & \textbf{Links in the top bar} \\
+\midrule
+Not logged in  & \menu{Home}, \menu{Events}, \menu{Login}, \menu{Register} \\
+A student      & \menu{Home}, \menu{Events}, \menu{My registrations}, ``Hi, \emph{your name}'', \menu{Logout} \\
+An admin       & \menu{Home}, \menu{Events}, \menu{Admin}, ``Hi, \emph{your name}'', \menu{Logout} \\
+\bottomrule
+\end{tabularx}
+\caption{Navigation bar links.}
+\end{table}
+
+Short messages (for example ``You are registered for Music Night.'') appear in a box just under
+the bar after you do something. A \textcolor{okgreen}{green} edge means it worked; a
+\textcolor{errred}{red} edge means something was refused, with the reason.
+
+\subsection{The home page}
+
+The home page (\menu{Home}) welcomes you and shows how many events, venues and students are in the
+system.
+
+\subsection{Creating a student account}
+
+\begin{enumerate}
+  \item Click \menu{Register} in the top bar.
+  \item Fill in \textbf{Full name}, \textbf{Email} and \textbf{Password} (at least 6 characters).
+  \item Click \button{Register}. If everything is valid you are taken to the login page with the
+        message ``Account created. Please log in.''
+\end{enumerate}
+
+The site refuses the form if the name is empty, the email has no \code{@}, the password is shorter
+than 6 characters, or an account with that email already exists. Emails are not case-sensitive:
+\code{Asha@Campus.edu} and \code{asha@campus.edu} are the same account.
+
+\subsection{Logging in and out}
+
+Click \menu{Login}, enter your email and password and click \button{Log in}. You are taken to the
+events list and greeted by name. If the email or password is wrong you see
+``Invalid email or password.'' (The site deliberately does not say which one was wrong, so nobody
+can use the login form to find out which emails have accounts.)
+
+To log out, click \menu{Logout} in the top bar.
+
+\begin{tip}
+If you open a page that needs a login (such as \menu{My registrations}) while logged out, the
+site sends you to the login page with ``Please log in to see that page.''
+\end{tip}
+
+% =====================================================================
+\section{For students}
+\label{sec:student}
+
+\subsection{Browsing upcoming events}
+
+Click \menu{Events}. The page \textbf{Upcoming events} shows every event that has not started yet,
+earliest first, as a grid of cards. Each card shows the category, title, date and time, venue and
+how many \textbf{seats are left}. Past events are never listed.
+
+\begin{figure}[H]
+\centering
+\shot{search_page.png}{0.92\linewidth}
+\caption{The Upcoming events page with the search form at the top.}
+\label{fig:um-search}
+\end{figure}
+
+\subsection{Searching and filtering}
+
+The search form at the top of the events page has five fields. Fill in any combination; empty
+fields are ignored.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Field} & \textbf{What it does} \\
+\midrule
+Keyword  & Finds events whose \textbf{title or description} contains the text, e.g.\ \code{python}.
+           Upper and lower case do not matter. \\
+Category & One of \emph{Technical, Cultural, Sports, Workshop, Seminar}. \\
+Venue    & Only events at that venue. \\
+From     & Only events starting on or after this date. \\
+To       & Only events starting on or before this date (the whole day is included). \\
+\bottomrule
+\end{tabularx}
+\caption{Search fields.}
+\end{table}
+
+Click \button{Search} to apply the filters. The number of matching events is shown above the
+cards. Click \textbf{Clear} to remove all filters.
+
+\begin{tip}[Bookmark a search]
+The filters appear in the page address, for example
+\route{/events/?q=python&category=Workshop}. You can bookmark this address or send it to a friend
+to repeat the same search later.
+\end{tip}
+
+\subsection{Viewing an event}
+
+Click an event's title to open its detail page. It shows the category, title, \textbf{When}
+(start and end), \textbf{Where} (venue and location), the \textbf{Organiser}, \textbf{Seats}
+(how many are left out of the total) and the full description.
+
+\begin{figure}[H]
+\centering
+\shot{detail_page.png}{0.92\linewidth}
+\caption{An event detail page with the \textsf{Register} button.}
+\end{figure}
+
+The bottom of the page shows one of the following, depending on the situation:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Situation} & \textbf{What you see} \\
+\midrule
+You are not logged in                    & ``Log in to register for this event.'' \\
+You are an admin                         & A note that admins do not register for events \\
+You are registered, event not started    & \button{Cancel registration} \\
+You are registered, event has started    & A note that you are registered \\
+Event has started                        & A note that registration is closed \\
+No seats left                            & A note that the event is full \\
+Otherwise                                & \button{Register} \\
+\bottomrule
+\end{tabularx}
+\caption{The action area of the event detail page.}
+\end{table}
+
+\subsection{Registering for an event}
+
+\begin{enumerate}
+  \item Log in as a student.
+  \item Open the event and click \button{Register}.
+  \item You stay on the event page and see ``You are registered for \emph{event title}.''
+        The seat count goes down by one and the button changes to \textsf{Cancel registration}.
+\end{enumerate}
+
+The site checks the following, in this order, and tells you which rule stopped the registration:
+
+\begin{enumerate}
+  \item admins cannot register for events;
+  \item the event must not have started yet;
+  \item you must not already be registered for it;
+  \item there must be at least one seat left.
+\end{enumerate}
+
+\subsection{My registrations}
+
+Click \menu{My registrations} in the top bar to see every upcoming event you are registered for,
+with its category, time, venue and when you registered. Each row has a red \textsf{Cancel} button.
+
+\begin{figure}[H]
+\centering
+\shot{my_registrations_page.png}{0.92\linewidth}
+\caption{The My registrations page.}
+\end{figure}
+
+\subsection{Cancelling a registration}
+
+Click \textsf{Cancel registration} on the event page, or \textsf{Cancel} on the
+\menu{My registrations} page. You return to the page you came from with
+``Your registration for \emph{event title} was cancelled.'' Your seat becomes free for someone else.
+A registration cannot be cancelled once the event has started.
+
+% =====================================================================
+\section{For administrators}
+\label{sec:admin}
+
+Log in with an admin account and click \menu{Admin} in the top bar. Every admin page is protected:
+a student who types an admin address sees ``Error 403: You are not allowed to view this page.'', and
+a visitor is sent to the login page.
+
+\subsection{The dashboard}
+
+The \textbf{Admin dashboard} shows four counters: \emph{Events} (with how many are upcoming),
+\emph{Venues}, \emph{Students} and \emph{Registrations}. Below them are shortcut buttons:
+\button{Manage events}, \button{Manage venues}, \button{Reports}, \textsf{+ New event} and
+\textsf{+ New venue}.
+
+\subsection{Managing venues}
+
+\menu{Manage venues} lists every venue with its capacity, location and number of events, plus
+\textsf{Edit} and \textsf{Delete} actions.
+
+\paragraph{Create a venue.} Click \textsf{+ New venue}, fill in \textbf{Name}, \textbf{Location} and
+\textbf{Capacity} (a whole number above 0), and click \button{Save}.
+
+\paragraph{Edit a venue.} Click \textsf{Edit}, change the fields and click \button{Save}. The
+capacity cannot be made smaller than the largest event already booked there.
+
+\paragraph{Delete a venue.} Click \textsf{Delete} and confirm the browser's ``Delete this venue?''
+question. A venue that still has events cannot be deleted; move or delete those events first.
+
+\subsection{Managing events}
+
+\menu{Manage events} lists \emph{all} events, past and upcoming, with category, start time, venue,
+number registered and the actions \textsf{Participants}, \textsf{Edit} and \textsf{Delete}.
+
+\paragraph{Create an event.} Click \textsf{+ New event} and fill in the form:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Field} & \textbf{Rules} \\
+\midrule
+Title        & Required. \\
+Description  & Optional. Shown on the event page and searched by the keyword filter. \\
+Category     & Required; one of the five categories. \\
+Venue        & Required. The dropdown shows each venue's capacity, e.g.\ ``Sports Complex (holds 300)''. \\
+Starts, Ends & Required date and time. The event must end after it starts. \\
+Capacity     & Whole number above 0, \textbf{not more than the venue's capacity}. When editing, not less
+               than the number of students already registered. \\
+\bottomrule
+\end{tabularx}
+\caption{Event form fields.}
+\end{table}
+
+Click \button{Save}. If something is wrong, the form is shown again with your values and an error
+message at the top, so nothing you typed is lost.
+
+\paragraph{Venue clashes.} A venue cannot hold two events at the same time. If the new times overlap
+another event at the same venue, the form is refused with a message such as:
+
+\begin{quote}\small
+Sports Complex is already booked for `Poetry Slam' (2026-11-10 13:00 to 2026-11-10 16:00).
+\end{quote}
+
+Events that only touch, for example one ending at 11:00 and the next starting at 11:00, are
+allowed. When you edit an event, it is never reported as clashing with itself.
+
+\begin{figure}[H]
+\centering
+\shot{clash_error_page.png}{0.92\linewidth}
+\caption{A new event that overlaps another booking at the same venue is rejected.}
+\end{figure}
+
+\paragraph{Delete an event.} Click \textsf{Delete} and confirm ``Delete this event and all its
+registrations?''. All registrations for that event are removed automatically.
+
+\begin{warning}
+Deleting an event or venue cannot be undone.
+\end{warning}
+
+\subsection{Participants and CSV export}
+
+Click \textsf{Participants} next to an event to see the numbered list of registered students: name,
+email and registration time, earliest first. Click \button{Export CSV} to download the same list as
+\code{event_<id>_participants.csv}, which opens in Excel, LibreOffice Calc or Google Sheets. The file
+has the columns \emph{Name}, \emph{Email} and \emph{Registered at}.
+
+\subsection{Reports}
+
+Click \button{Reports} on the dashboard. The page has three tables.
+
+\begin{description}
+  \item[Popular categories] For each category: number of events and total registrations, most
+        popular first.
+  \item[Venue utilisation] For each venue: events held, registrations, \emph{seats offered} (the
+        total capacity of its events) and \emph{utilisation}, which is registrations as a
+        percentage of seats offered. Venues with no events are listed with 0\%.
+  \item[Registrations per event] Every event with its category, start, number registered,
+        capacity and \emph{fill rate} (registered as a percentage of capacity), shown as a number
+        and as a small bar. Most registered first.
+\end{description}
+
+\begin{figure}[H]
+\centering
+\shot{reports_overview.png}{0.92\linewidth}
+\caption{Reports: popular categories and venue utilisation.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\shot{reports_per_event.png}{0.92\linewidth}
+\caption{Reports: registrations per event with fill-rate bars.}
+\end{figure}
+
+% =====================================================================
+\section{Messages and what they mean}
+\label{sec:messages}
+
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.42\linewidth} X@{}}
+\toprule
+\textbf{Message} & \textbf{Meaning and what to do} \\
+\midrule
+\endhead
+\multicolumn{2}{@{}l}{\textit{Accounts}} \\
+Name is required. & Type your name. \\
+Please enter a valid email address. & The email must contain \code{@}. \\
+Password must be at least 6 characters. & Choose a longer password. \\
+An account with that email already exists. & Log in instead, or use another email. \\
+Invalid email or password. & Check both and try again. \\
+Please log in to see that page. & Log in; you will be able to open the page afterwards. \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Registrations (students)}} \\
+Admins cannot register for events. & Use a student account. \\
+This event has already started. & Registration closes when the event starts. \\
+You are already registered for this event. & Nothing to do; see \menu{My registrations}. \\
+Sorry, this event is full. & All seats are taken. Check again later in case someone cancels. \\
+You cannot cancel after the event has started. & Cancellation closes when the event starts. \\
+You were not registered for this event. & There was no registration to cancel. \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Events and venues (admins)}} \\
+Title is required. / Please choose a category. / Please choose a venue. & Fill in the missing field. \\
+Please enter a valid start and end time. & Pick both a date and a time. \\
+The event must end after it starts. & Fix the start or end time. \\
+Capacity must be a whole number greater than 0. & Enter e.g.\ \code{50}. \\
+Capacity (N) cannot be more than the capacity of \emph{venue} (M). & Lower the capacity or choose a bigger venue. \\
+N students are already registered, so capacity cannot be lower. & Keep the capacity at least N. \\
+\emph{Venue} is already booked for `\emph{event}' (\emph{times}). & Choose another time or venue. \\
+Venue name is required. / Location is required. & Fill in the missing field. \\
+An event here has capacity N, so the venue cannot be smaller. & Keep the venue capacity at least N. \\
+Cannot delete: N event(s) use this venue. & Move or delete those events first. \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Error pages}} \\
+Error 403: You are not allowed to view this page. & The page is for admins only. \\
+Error 404: That page does not exist. & The address is wrong, or the event was deleted. \\
+\bottomrule
+\end{xltabular}
+
+% =====================================================================
+\section{Frequently asked questions}
+
+\paragraph{Can I register a friend?} No. Each student registers themselves from their own account.
+
+\paragraph{Why can't I see an event I registered for in My registrations?} The page only shows
+events that have not started yet.
+
+\paragraph{Why does an event say ``0 seats left'' but I can still see it?} Full events stay visible
+so you know they exist; only the \textsf{Register} button is replaced.
+
+\paragraph{How do I become an admin?} Admin accounts are created by whoever runs the site, using
+\code{./scripts/setup.sh} or the \code{create-admin} command (see the Installation Guide).
+
+\paragraph{Does the site work on a phone?} Yes. The layout adapts to narrow screens, and wide tables
+can be scrolled sideways.
+
+\paragraph{Demo accounts.} After the demo data is loaded with \code{./scripts/seed.sh}, you can log
+in as the admin \code{admin@campus.local} / \code{admin123} or as any student from
+\code{student1@campus.local} to \code{student100@campus.local} with password \code{student123}.
+These are for demonstrations only.
+
+\end{document}

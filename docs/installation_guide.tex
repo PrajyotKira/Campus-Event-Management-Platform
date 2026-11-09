@@ -1,0 +1,387 @@
+% =====================================================================
+%  Installation & Operations Guide: installing, running and maintaining
+%  the application, plus every script, setting and common problem.
+%  Build: ./scripts/build_docs.sh   (or compile in docs/ with pdflatex)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+\usepackage{campusdoc}
+
+\begin{document}
+
+\makedoctitle{Installation \& Operations Guide}{Installing, running and maintaining Campus Events}{CEMP-IG-01}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Overview}
+
+This guide is for whoever installs and runs the Campus Event Management Platform: a lab
+assistant, an examiner, or a developer setting up their own copy. It covers system requirements,
+installation, day-to-day commands, configuration, the database, and solutions to common problems.
+
+The application is a Flask web app that stores its data in a single SQLite file. Everything is
+driven by Bash scripts in \code{scripts/}, which work in \textbf{Git Bash on Windows} and in any
+Bash shell on \textbf{Linux or macOS}.
+
+\begin{note}[Quick start]
+\begin{lstlisting}[style=shell, backgroundcolor=\color{white}, frame=none]
+git clone https://github.com/PrajyotKira/Campus-Event-Management-Platform.git
+cd Campus-Event-Management-Platform
+./scripts/setup.sh      # venv, packages, database, indexes, admin account
+./scripts/seed.sh       # optional: demo data
+./scripts/run.sh        # open http://127.0.0.1:5000
+\end{lstlisting}
+\end{note}
+
+% =====================================================================
+\section{System requirements}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Component} & \textbf{Version} & \textbf{Notes} \\
+\midrule
+Python      & 3.10 or newer & From \url{https://www.python.org/}. On Windows, tick ``Add Python to PATH''. Developed with Python 3.14; also tested on Python 3.13 (Linux). \\
+Bash        & 4 or newer    & Windows: Git Bash, installed with Git for Windows (\url{https://git-scm.com/}). Linux/macOS: built in. \\
+Git         & any recent    & To clone the repository. \\
+Web browser & any modern    & Chrome, Firefox, Edge or Safari. \\
+LaTeX       & optional      & TeX Live or MiKTeX, only to rebuild the PDF documentation. Overleaf also works. \\
+\bottomrule
+\end{tabularx}
+\caption{Requirements.}
+\end{table}
+
+SQLite needs no installation: it is built into Python's standard library. The Python packages are
+listed in \code{requirements.txt} and installed automatically:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}l l l@{}}
+\toprule
+\textbf{Package} & \textbf{Version range} & \textbf{Used for} \\
+\midrule
+Flask        & \code{>=3.0,<4.0} & web framework, Jinja2 templates, CLI commands \\
+Flask-Login  & \code{>=0.6.3}    & login sessions \\
+pytest       & \code{>=8.0}      & automated tests \\
+Faker        & \code{>=25.0}     & realistic demo data \\
+snakeviz     & \code{>=2.2}      & viewing profiler output in the browser \\
+\bottomrule
+\end{tabular}
+\caption{Python dependencies (Werkzeug, Jinja2 and Click come with Flask).}
+\end{table}
+
+% =====================================================================
+\section{Installation}
+
+\subsection{Get the code}
+
+\begin{lstlisting}[style=shell]
+git clone https://github.com/PrajyotKira/Campus-Event-Management-Platform.git
+cd Campus-Event-Management-Platform
+\end{lstlisting}
+
+You can also download the repository as a ZIP from GitHub and extract it. If the folder name
+contains spaces, keep the quotes when you \code{cd} into it.
+
+\subsection{Run the setup script}
+
+\begin{lstlisting}[style=shell]
+./scripts/setup.sh
+\end{lstlisting}
+
+It performs six steps and prints each one:
+
+\begin{enumerate}
+  \item \textbf{Find Python.} Tries \code{python3}, then \code{python}, by actually running
+        \code{--version} (on Windows \code{python3} can be a non-working Microsoft Store shortcut).
+  \item \textbf{Create the virtual environment} in \code{venv/} (skipped if it already exists).
+  \item \textbf{Install requirements} with \code{pip}.
+  \item \textbf{Create the database} \code{instance/campus.db} from \code{sql/schema.sql}.
+  \item \textbf{Add indexes} from \code{sql/indexes.sql}.
+  \item \textbf{Create the admin account} (default \code{admin@campus.local} / \code{admin123}).
+\end{enumerate}
+
+\begin{warning}
+Running \code{setup.sh} again \textbf{deletes all data}, because step 4 recreates every table.
+Back up \code{instance/campus.db} first if you need it (Section~\ref{sec:backup}).
+\end{warning}
+
+\subsection{Admin account}
+\label{sec:admin}
+
+Choose your own admin login with environment variables:
+
+\begin{lstlisting}[style=shell]
+ADMIN_NAME="Event Office" ADMIN_EMAIL=events@iitdh.ac.in ADMIN_PASSWORD='S3cure!pw' ./scripts/setup.sh
+\end{lstlisting}
+
+To add another admin later without wiping the database:
+
+\begin{lstlisting}[style=shell]
+source venv/Scripts/activate      # Windows Git Bash  (Linux/macOS: source venv/bin/activate)
+python -m flask --app app create-admin --name "Second Admin" --email second@campus.local --password secret
+\end{lstlisting}
+
+If the email already exists the command does nothing and says so.
+
+\subsection{Load demo data (optional)}
+
+\begin{lstlisting}[style=shell]
+./scripts/seed.sh          # 50 events
+./scripts/seed.sh 200      # 200 events
+\end{lstlisting}
+
+This replaces all venues, events, registrations and student accounts (admins are kept) with:
+10 real-sounding campus venues, 100 students (\code{student1@campus.local} to
+\code{student100@campus.local}, password \code{student123}), the requested number of events spread
+over the next 60 days without any venue clash, and random registrations that never exceed an
+event's capacity. The random seed is fixed, so the same command always creates the same data.
+
+\subsection{Start the application}
+
+\begin{lstlisting}[style=shell]
+./scripts/run.sh               # http://127.0.0.1:5000
+PORT=8000 ./scripts/run.sh     # another port
+\end{lstlisting}
+
+Open the printed address in a browser. Press \kbd{Ctrl+C} in the terminal to stop the server. The
+server runs in debug mode: it reloads automatically when code changes and shows detailed error
+pages, which is right for development and demonstrations.
+
+\subsection{Verify the installation}
+
+\begin{enumerate}
+  \item Run \code{./scripts/test.sh}. The last line should read \code{45 passed}.
+  \item Open the site, log in as the admin and open \menu{Admin} $\rightarrow$ \menu{Reports}.
+  \item Log in as \code{student1@campus.local} in a private window and register for an event.
+\end{enumerate}
+
+% =====================================================================
+\section{Script reference}
+
+All scripts live in \code{scripts/}, start with \code{set -euo pipefail} (stop on the first error,
+treat unset variables as errors, fail a pipeline if any part fails) and can be run from any folder.
+
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.31\linewidth} X@{}}
+\toprule
+\textbf{Command} & \textbf{What it does} \\
+\midrule
+\endhead
+\code{./scripts/setup.sh} & One-time setup (above). Variables: \code{ADMIN_NAME}, \code{ADMIN_EMAIL}, \code{ADMIN_PASSWORD}. \\
+\code{./scripts/run.sh} & Activates the venv, checks the database exists, starts Flask in debug mode. Variable: \code{PORT} (default 5000). \\
+\code{./scripts/seed.sh [N]} & Replaces non-admin data with demo data with N events (default 50). N must be a positive whole number. \\
+\code{./scripts/test.sh [args]} & Runs \code{pytest -v}. Extra arguments go to pytest, e.g.\ \code{./scripts/test.sh -k clash} or \code{./scripts/test.sh tests/test_admin.py}. \\
+\code{./scripts/profile.sh <label> [N]} & Builds a separate database \code{profiling/profile.db} with N events (default 2000), profiles the reports and search, saves results in \code{profiling/<label>/}. Variables: \code{RUNS} (timed runs per workload, default 3), \code{APPLY_INDEXES} (1 = add indexes, 0 = skip). \\
+\code{./scripts/build_docs.sh} & Compiles every LaTeX document in \code{report/} and \code{docs/} to PDF with \code{latexmk} or \code{pdflatex}. \\
+\code{scripts/common.sh} & Not run directly. Shared functions \code{find_python} and \code{activate_venv}, and the variables \code{PROJECT_ROOT} and \code{VENV_DIR}. \\
+\bottomrule
+\end{xltabular}
+
+% =====================================================================
+\section{Configuration}
+
+\subsection{Environment variables}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Variable} & \textbf{Default} & \textbf{Meaning} \\
+\midrule
+\code{SECRET_KEY}     & \code{dev-change-me}          & Signs the login cookie. \textbf{Must} be changed for any real deployment. \\
+\code{CAMPUS_DB}      & \code{instance/campus.db}     & Path of the SQLite database file. \code{profile.sh} sets it to \code{profiling/profile.db}. \\
+\code{PORT}           & \code{5000}                   & Port used by \code{run.sh}. \\
+\code{ADMIN_NAME}     & \code{Admin}                  & Admin display name for \code{setup.sh}. \\
+\code{ADMIN_EMAIL}    & \code{admin@campus.local}     & Admin login for \code{setup.sh}. \\
+\code{ADMIN_PASSWORD} & \code{admin123}               & Admin password for \code{setup.sh}. \\
+\code{RUNS}           & \code{3}                      & Timed runs per workload in \code{profile.sh}. \\
+\code{APPLY_INDEXES}  & \code{1}                      & Whether \code{profile.sh} adds the indexes. \\
+\bottomrule
+\end{tabularx}
+\caption{Settings read from the environment.}
+\end{table}
+
+Set a variable for a single command by writing it in front, e.g.\ \code{PORT=8000 ./scripts/run.sh},
+or for the whole terminal session with \code{export SECRET_KEY=...}.
+
+\subsection{Built-in settings}
+
+\code{create_app()} in \code{app/__init__.py} also sets \code{SESSION_COOKIE_SAMESITE="Lax"}, so the
+browser does not send the login cookie with form submissions from other websites. The list of event
+categories (\emph{Technical, Cultural, Sports, Workshop, Seminar}) is the \code{CATEGORIES} list in
+\code{app/events.py}; edit it there to add a category.
+
+% =====================================================================
+\section{Flask command-line commands}
+
+The scripts call these commands; you can also run them yourself after activating the virtual
+environment. They are always run as \code{python -m flask --app app <command>} because the
+\code{flask.exe} launcher can be blocked on Windows.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Command} & \textbf{Effect} \\
+\midrule
+\code{init-db}       & Drops and recreates all tables from \code{sql/schema.sql}. \textbf{Deletes all data.} \\
+\code{add-indexes}   & Creates the indexes in \code{sql/indexes.sql} (safe to repeat) and lists them. \\
+\code{create-admin --name N --email E --password P} & Adds an admin account; skips an existing email. \\
+\code{seed --events N --students M} & Replaces non-admin data with demo data (defaults 50 and 100). Needs an admin to exist. \\
+\code{run --debug --port P} & Starts the development server (what \code{run.sh} does). \\
+\code{routes}        & Lists every URL the app answers to (built into Flask). \\
+\bottomrule
+\end{tabularx}
+\caption{Flask CLI commands.}
+\end{table}
+
+% =====================================================================
+\section{Running without Bash}
+
+If Bash is not available (for example in Windows PowerShell or Command Prompt), run the same steps
+by hand from the project folder:
+
+\begin{lstlisting}[style=shell, caption={Manual setup in PowerShell.}]
+python -m venv venv
+venv\Scripts\Activate.ps1          # Command Prompt: venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+python -m flask --app app init-db
+python -m flask --app app add-indexes
+python -m flask --app app create-admin
+python -m flask --app app seed --events 50      # optional demo data
+python -m flask --app app run --debug           # http://127.0.0.1:5000
+python -m pytest -v                             # tests
+\end{lstlisting}
+
+If PowerShell refuses to run \code{Activate.ps1}, run
+\code{Set-ExecutionPolicy -Scope CurrentUser RemoteSigned} once.
+
+% =====================================================================
+\section{Database operations}
+
+\subsection{Where the data lives}
+
+All data is in one file, \code{instance/campus.db}. It is listed in \code{.gitignore}, so it is never
+committed. The \code{instance/} folder is created automatically.
+
+\subsection{Back up and restore}
+\label{sec:backup}
+
+Stop the server, then copy the file:
+
+\begin{lstlisting}[style=shell]
+cp instance/campus.db "backup-$(date +%Y-%m-%d).db"     # back up
+cp backup-2026-11-10.db instance/campus.db              # restore
+\end{lstlisting}
+
+\subsection{Reset}
+
+\begin{itemize}
+  \item Empty database, keep the venv: \code{python -m flask --app app init-db}, then
+        \code{add-indexes} and \code{create-admin}.
+  \item Everything from scratch: delete \code{venv/} and \code{instance/}, then run
+        \code{./scripts/setup.sh}.
+  \item Fresh demo data only: \code{./scripts/seed.sh}.
+\end{itemize}
+
+\subsection{Inspect the data}
+
+Any SQLite browser can open the file, for example \emph{DB Browser for SQLite} or the
+\code{sqlite3} command-line tool:
+
+\begin{lstlisting}[style=shell]
+sqlite3 instance/campus.db
+sqlite> .tables
+sqlite> SELECT title, start_time FROM events ORDER BY start_time LIMIT 5;
+sqlite> .quit
+\end{lstlisting}
+
+Do not edit the file while the server is handling requests.
+
+% =====================================================================
+\section{Building the documentation}
+
+\begin{lstlisting}[style=shell]
+./scripts/build_docs.sh
+\end{lstlisting}
+
+This compiles six documents and places each PDF next to its source:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+\textbf{Source} & \textbf{Document} \\
+\midrule
+\code{report/report.tex}              & Project report \\
+\code{report/slides.tex}              & Presentation slides (Beamer) \\
+\code{docs/user_manual.tex}           & User Manual \\
+\code{docs/installation_guide.tex}    & Installation \& Operations Guide (this document) \\
+\code{docs/developer_guide.tex}       & Developer Guide \\
+\code{docs/test_report.tex}           & Test Plan \& Report \\
+\bottomrule
+\end{tabular}
+\caption{Documentation sources.}
+\end{table}
+
+The documents in \code{docs/} share the style file \code{docs/campusdoc.sty} and use the screenshots
+in \code{report/figures/}. Without a local LaTeX installation, upload the \code{report/} and
+\code{docs/} folders together to Overleaf, keeping them side by side, and compile each \code{.tex}
+file with pdfLaTeX.
+
+% =====================================================================
+\section{Troubleshooting}
+
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.36\linewidth} X@{}}
+\toprule
+\textbf{Problem} & \textbf{Cause and fix} \\
+\midrule
+\endhead
+\code{ERROR: Python 3 was not found.} & Install Python 3.10+ and make sure it is on the PATH. Open a new terminal afterwards. \\
+\texttt{\$'\textbackslash r': command not found} when running a script & The script has Windows (CRLF) line endings. The repository's \code{.gitattributes} prevents this on a fresh clone; to repair a copy, run \code{git rm --cached -r scripts && git checkout -- scripts} or convert with \code{dos2unix scripts/*.sh}. \\
+\code{Permission denied} running \code{./scripts/x.sh} & Make the scripts executable: \code{chmod +x scripts/*.sh}, or run \code{bash scripts/x.sh}. \\
+\code{flask.exe}: Permission denied (Windows) & A security policy blocks the launcher. The scripts already avoid it by using \code{python -m flask}; do the same when typing commands. \\
+\code{ERROR: virtual environment not found.} & Run \code{./scripts/setup.sh}. \\
+\code{ERROR: database not found.} & Run \code{./scripts/setup.sh} (it creates \code{instance/campus.db}). \\
+\code{No admin account found} from \code{seed} & Create one with \code{create-admin}, or run \code{setup.sh}. \\
+\code{Address already in use} & Another program uses port 5000 (on macOS often AirPlay Receiver). Use \code{PORT=8000 ./scripts/run.sh}. \\
+\code{ModuleNotFoundError: No module named 'flask'} & The virtual environment is not active. Use the scripts, or \code{source venv/Scripts/activate} (Windows) / \code{source venv/bin/activate}. \\
+\code{database is locked} & Another program (e.g.\ DB Browser) has the file open with unsaved changes. Close it or write the changes. \\
+Logged out after restarting the server & Expected if \code{SECRET_KEY} changed between runs. Set a fixed value. \\
+\code{No LaTeX installation found} from \code{build_docs.sh} & Install TeX Live or MiKTeX, or use Overleaf. \\
+\bottomrule
+\end{xltabular}
+
+% =====================================================================
+\section{Deployment notes}
+
+The project is built for development and demonstration. Before exposing it to real users:
+
+\begin{enumerate}
+  \item Set a long random \code{SECRET_KEY}, for example the output of\\
+        \code{python -c "import secrets; print(secrets.token_hex(32))"}\,.
+  \item Do not use \code{--debug}; its interactive error pages must never be public.
+  \item Serve the app with a production WSGI server behind HTTPS, for example\\
+        \code{waitress-serve --call app:create_app} on Windows, or\\
+        \code{gunicorn "app:create_app()"} on Linux.
+  \item Change or remove the default admin password and do not load demo data.
+  \item Back up \code{instance/campus.db} regularly.
+\end{enumerate}
+
+The project report lists further hardening as future work (CSRF tokens, atomic registration for the
+last seat).
+
+% =====================================================================
+\section{Uninstalling}
+
+Everything lives inside the project folder. Stop the server and delete the folder. No system files,
+services or registry entries are created.
+
+\end{document}

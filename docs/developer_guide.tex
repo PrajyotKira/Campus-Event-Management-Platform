@@ -1,0 +1,723 @@
+% =====================================================================
+%  Developer Guide: technical reference for the code base.
+%  Build: ./scripts/build_docs.sh   (or compile in docs/ with pdflatex)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+\usepackage{campusdoc}
+
+% Function reference entry:  \fn{signature}{description}
+\newcommand{\fn}[2]{\par\smallskip\noindent\colorbox{codebg}{\parbox{\dimexpr\linewidth-2\fboxsep}{\ttfamily\small\detokenize{#1}}}\par\nopagebreak\smallskip
+  \noindent\begin{minipage}{\linewidth}\setlength{\parindent}{0pt}\leftskip=1.2em #2\end{minipage}\par\medskip}
+
+\begin{document}
+
+\makedoctitle{Developer Guide}{Architecture, code reference and conventions}{CEMP-DG-01}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Introduction}
+
+This guide is the technical reference for the Campus Event Management Platform. It explains how
+the code is organised, what every module, route and function does, how the database is designed,
+and how to extend the application safely. It is written for someone reading or changing the code.
+How to \emph{use} the site is in the User Manual; how to install it is in the Installation \&
+Operations Guide; the tests are documented in the Test Plan \& Report.
+
+\subsection{Design principles}
+
+\begin{enumerate}
+  \item \textbf{Simple and explainable.} Plain functions, short modules, comments that say
+        \emph{why}. No clever abstractions; every line should be explainable in a viva.
+  \item \textbf{Raw SQL, no ORM.} All database work uses Python's built-in \code{sqlite3} module
+        with hand-written SQL, so the queries can be read, tested, profiled and \code{EXPLAIN}ed.
+  \item \textbf{Every value through a placeholder.} User input reaches SQLite only through
+        \code{?} parameters, never through string formatting.
+  \item \textbf{The database enforces the rules too.} \code{UNIQUE}, \code{CHECK} and foreign-key
+        constraints back up the Python validation.
+  \item \textbf{Hand-written HTML and CSS.} Jinja2 templates and one stylesheet; no CSS or
+        JavaScript framework.
+  \item \textbf{Measure before optimising.} Performance changes are justified by
+        \code{cProfile} measurements and query plans kept in \code{profiling/}.
+\end{enumerate}
+
+\subsection{Technology stack}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} \\
+\midrule
+Language        & Python 3.10+ \\
+Web framework   & Flask 3 (routing, Blueprints, Jinja2 templates, Click CLI) \\
+Authentication  & Flask-Login (sessions), Werkzeug \code{generate_password_hash} / \code{check_password_hash} \\
+Database        & SQLite through \code{sqlite3}, raw SQL \\
+Front end       & Jinja2 HTML templates, one hand-written CSS file \\
+Testing         & pytest with Flask's test client \\
+Demo data       & Faker (\code{en_IN} locale, fixed seed) \\
+Profiling       & \code{cProfile}, \code{pstats}, SnakeViz, \code{EXPLAIN QUERY PLAN} \\
+Automation      & Bash scripts \\
+Documentation   & LaTeX (article and Beamer), Markdown \\
+\bottomrule
+\end{tabularx}
+\caption{Technology stack.}
+\end{table}
+
+% =====================================================================
+\section{Repository layout}
+
+\begin{lstlisting}[language={}, caption={Project tree (generated files such as venv/ and instance/ are git-ignored).}]
+Campus-Event-Management-Platform/
+|-- app/                      Flask application package
+|   |-- __init__.py           create_app(): config, blueprints, error pages, home page
+|   |-- db.py                 get_db/close_db, init-db, add-indexes, create-admin commands
+|   |-- auth.py               User class, login manager, admin_required, register/login/logout
+|   |-- events.py             search, event detail, register/cancel, my registrations
+|   |-- admin.py              dashboard, venue + event CRUD, clash check, participants, CSV
+|   |-- reports.py            report queries (JOIN + GROUP BY)
+|   |-- seed.py               "flask seed" demo-data command
+|   |-- templates/            Jinja2 templates: base, index, error, auth/, events/, admin/
+|   `-- static/style.css      the only stylesheet
+|-- sql/
+|   |-- schema.sql            tables and constraints
+|   `-- indexes.sql           performance indexes (added after profiling)
+|-- scripts/                  Bash automation: common, setup, run, seed, test, profile, build_docs
+|-- tests/                    conftest.py (fixtures) + 5 test files, 45 tests
+|-- profiling/                run_profile.py, explain.py, RESULTS.md, before/ rewrite_only/ after/
+|-- report/                   report.tex, slides.tex, figures/
+|-- docs/                     campusdoc.sty + the four guides (this file is one of them)
+|-- instance/                 campus.db (created by setup.sh, git-ignored)
+|-- requirements.txt  pytest.ini  .gitignore  .gitattributes
+`-- README.md  AI_USAGE.md  CLAUDE.md
+\end{lstlisting}
+
+% =====================================================================
+\section{Architecture}
+
+\subsection{Overview}
+
+The application follows the usual three-tier structure of a server-rendered web app:
+\textbf{presentation} (Jinja2 templates and CSS), \textbf{application logic} (Flask Blueprints and
+plain Python functions) and \textbf{data} (SQLite). There is no client-side JavaScript apart from the
+browser's built-in \code{confirm()} on delete buttons.
+
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+    font=\small,
+    box/.style={draw, rounded corners=3pt, fill=primary!6, align=center, minimum height=0.9cm, text width=2.4cm},
+    mod/.style={draw, rounded corners=2pt, fill=white, align=center, minimum height=0.8cm, text width=2.7cm},
+    arr/.style={-{Stealth[length=2.5mm]}, thick},
+  ]
+  \node[box, minimum height=1.6cm] (browser) at (-0.8,-0.4) {\textbf{Browser}\\ HTML forms\\ (GET / POST)};
+  \node[mod] (init)   at (4.6,2.2)  {\code{__init__.py}\\ \code{create_app()}};
+  \node[mod] (auth)   at (4.6,0.9)  {\code{auth} Blueprint\\ \route{/auth/...}};
+  \node[mod] (events) at (4.6,-0.4) {\code{events} Blueprint\\ \route{/events/...}};
+  \node[mod] (admin)  at (4.6,-1.7) {\code{admin} Blueprint\\ \route{/admin/...}};
+  \node[mod] (reports) at (8.3,-1.7) {\code{reports.py}};
+  \node[mod] (db)     at (8.3,0.25) {\code{db.py}\\ \code{get_db()}};
+  \node[mod] (tpl)    at (8.3,2.2)  {Jinja2 templates\\ + \code{style.css}};
+  \node[draw, dashed, rounded corners=5pt, inner sep=7pt, fit=(init)(admin)(reports)(tpl),
+        label={[font=\small\bfseries]above:Flask application}] {};
+  \node[draw, shape=cylinder, shape border rotate=90, aspect=0.25, fill=orange!15,
+        minimum height=1.8cm, minimum width=1.9cm, align=center] (sqlite) at (13.0,0.25)
+        {\textbf{SQLite}\\ \code{campus.db}};
+  \draw[arr] ([yshift=4pt]browser.east) -- node[above, font=\footnotesize, sloped]{request} ([yshift=4pt]events.west);
+  \draw[arr] ([yshift=-4pt]events.west) -- node[below, font=\footnotesize, sloped]{HTML page} ([yshift=-4pt]browser.east);
+  \draw[arr] (auth.east) -- (db.west);
+  \draw[arr] (events.east) -- (db.west);
+  \draw[arr] (admin.east) -- (reports.west);
+  \draw[arr] (admin.north east) -- (db.south west);
+  \draw[arr] (reports.north) -- (db.south);
+  \draw[arr] (db.east) -- node[above, font=\footnotesize]{SQL + \code{?}} (sqlite.west);
+\end{tikzpicture}}
+\caption{Components and how a request flows through them.}
+\end{figure}
+
+\subsection{Life of a request}
+
+Taking ``a student clicks \textsf{Register}'' as an example:
+
+\begin{enumerate}
+  \item The browser sends \code{POST /events/7/register} with the session cookie.
+  \item Flask matches the URL rule \route{/events/<int:event_id>/register}, so it calls the
+        view function \code{register_for_event} in \code{events.py} with \code{event_id=7}.
+  \item \code{@login_required} asks Flask-Login for the current user. Flask-Login reads the user id
+        from the signed cookie and calls \code{load_user()}, which runs one \code{SELECT} on
+        \code{users}. A visitor is redirected to \route{/auth/login}.
+  \item The view calls \code{get_event(7)}. \code{get_db()} opens a connection the first time it is
+        needed in this request and stores it in \code{flask.g}.
+  \item The view checks the registration rules (Section~\ref{sec:rules}), runs the
+        \code{INSERT}, commits, and \code{flash()}es a message.
+  \item It returns a redirect to the detail page (\emph{Post/Redirect/Get}), so refreshing the page
+        never submits the form twice.
+  \item When the request ends, \code{close_db()} (registered with \code{teardown_appcontext})
+        closes the connection.
+  \item The browser follows the redirect; the detail page renders the flashed message from
+        \code{base.html}.
+\end{enumerate}
+
+\subsection{Application factory}
+
+\code{create_app(test_config=None)} in \code{app/__init__.py} builds a new Flask application:
+
+\begin{enumerate}
+  \item creates \code{Flask(__name__, instance_relative_config=True)}, so \code{app.instance_path}
+        is the \code{instance/} folder next to \code{app/};
+  \item sets \code{SECRET_KEY} (env var, default \code{dev-change-me}), \code{DATABASE}
+        (env var \code{CAMPUS_DB}, default \code{instance/campus.db}) and
+        \code{SESSION_COOKIE_SAMESITE="Lax"};
+  \item applies \code{test_config} on top (the tests pass a temporary database path);
+  \item creates the \code{instance/} folder;
+  \item registers the database helpers and CLI commands (\code{db.init_app}) and the \code{seed}
+        command;
+  \item initialises Flask-Login and registers the \code{auth}, \code{events} and \code{admin}
+        Blueprints;
+  \item defines the home page route \route{/} and the 403 and 404 error handlers, which render
+        \code{error.html}.
+\end{enumerate}
+
+Building the app in a function instead of at import time is what lets every test get its own
+isolated app and database.
+
+% =====================================================================
+\section{Database design}
+
+\subsection{Entity--relationship model}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    entity/.style={draw, rounded corners=2pt, fill=primary!4, font=\small, inner sep=2pt},
+    rel/.style={draw, thick},
+    card/.style={font=\footnotesize\bfseries, inner sep=1pt},
+    lbl/.style={font=\footnotesize\itshape, fill=white, inner sep=1pt},
+  ]
+  \node[entity] (users) at (0,0) {\begin{tabular}{l}\textbf{users}\\ \hline id (PK)\\ name\\ email (UNIQUE)\\ password\_hash\\ role\end{tabular}};
+  \node[entity] (events) at (8.5,0) {\begin{tabular}{l}\textbf{events}\\ \hline id (PK)\\ title, description\\ category\\ venue\_id (FK)\\ start\_time, end\_time\\ capacity\\ created\_by (FK)\end{tabular}};
+  \node[entity] (regs) at (0,-4.6) {\begin{tabular}{l}\textbf{registrations}\\ \hline id (PK)\\ user\_id (FK)\\ event\_id (FK)\\ registered\_at\end{tabular}};
+  \node[entity] (venues) at (8.5,-4.6) {\begin{tabular}{l}\textbf{venues}\\ \hline id (PK)\\ name\\ capacity\\ location\end{tabular}};
+  \draw[rel] (users) -- node[lbl]{creates} node[card, pos=0.06, above]{1} node[card, pos=0.94, above]{N} (events);
+  \draw[rel] (users) -- node[lbl]{makes} node[card, pos=0.1, right]{1} node[card, pos=0.9, right]{N} (regs);
+  \draw[rel] (regs) -- node[lbl]{for} node[card, pos=0.1, above]{N} node[card, pos=0.9, above]{1} (events);
+  \draw[rel] (events) -- node[lbl]{held at} node[card, pos=0.1, right]{N} node[card, pos=0.9, right]{1} (venues);
+\end{tikzpicture}
+\caption{Four tables. \texttt{registrations} links students and events (many-to-many).}
+\end{figure}
+
+\subsection{Table reference}
+
+The schema is in \code{sql/schema.sql}. Running it drops and recreates all tables, children first.
+
+\newcommand{\coltable}[1]{%
+\begin{tabularx}{\linewidth}{@{}>{\ttfamily}l >{\ttfamily}l X@{}}
+\toprule
+\textbf{\textrm{Column}} & \textbf{\textrm{Type}} & \textbf{Constraints and meaning} \\
+\midrule
+#1
+\bottomrule
+\end{tabularx}}
+
+\paragraph{users}: everyone who can log in.\par\smallskip
+\noindent\small\coltable{
+id & INTEGER & Primary key, auto-increment. \\
+name & TEXT & \code{NOT NULL}. Display name. \\
+email & TEXT & \code{NOT NULL UNIQUE}. Stored lower-case by the app; the login name. \\
+password\_hash & TEXT & \code{NOT NULL}. Werkzeug salted hash (scrypt by default); never the password. \\
+role & TEXT & \code{NOT NULL DEFAULT 'student'}, \code{CHECK (role IN ('admin','student'))}. \\
+}\normalsize
+
+\paragraph{venues}: physical places.\par\smallskip
+\noindent\small\coltable{
+id & INTEGER & Primary key, auto-increment. \\
+name & TEXT & \code{NOT NULL}. \\
+capacity & INTEGER & \code{NOT NULL}, \code{CHECK (capacity > 0)}. \\
+location & TEXT & \code{NOT NULL}. Building and floor. \\
+}\normalsize
+
+\paragraph{events}: things students register for.\par\smallskip
+\noindent\small\coltable{
+id & INTEGER & Primary key, auto-increment. \\
+title & TEXT & \code{NOT NULL}. \\
+description & TEXT & Optional. \\
+category & TEXT & \code{NOT NULL}. One of \code{CATEGORIES} (checked in Python). \\
+venue\_id & INTEGER & \code{NOT NULL}, foreign key to \code{venues(id)}. \\
+start\_time & TEXT & \code{NOT NULL}. \code{'YYYY-MM-DD HH:MM'}. \\
+end\_time & TEXT & \code{NOT NULL}. Same format. Table check \code{CHECK (end_time > start_time)}. \\
+capacity & INTEGER & \code{NOT NULL}, \code{CHECK (capacity > 0)}. At most the venue's capacity (checked in Python). \\
+created\_by & INTEGER & \code{NOT NULL}, foreign key to \code{users(id)}: the admin who created it. \\
+}\normalsize
+
+\paragraph{registrations}: which student is registered for which event.\par\smallskip
+\noindent\small\coltable{
+id & INTEGER & Primary key, auto-increment. \\
+user\_id & INTEGER & \code{NOT NULL}, foreign key to \code{users(id)} \code{ON DELETE CASCADE}. \\
+event\_id & INTEGER & \code{NOT NULL}, foreign key to \code{events(id)} \code{ON DELETE CASCADE}. \\
+registered\_at & TEXT & \code{NOT NULL DEFAULT (datetime('now','localtime'))}. \\
+\multicolumn{2}{@{}l}{\textrm{\emph{table constraint}}} & \code{UNIQUE (user_id, event_id)}: one registration per student per event. \\
+}\normalsize
+
+\subsection{Conventions}
+
+\begin{description}
+  \item[Times as text.] Times are \code{TEXT} in \code{'YYYY-MM-DD HH:MM'} format. Because the most
+        significant part comes first, string comparison equals time comparison, so \code{<},
+        \code{>}, \code{BETWEEN} and \code{ORDER BY} work directly. \code{now_string()} in
+        \code{events.py} produces the current time in the same format. HTML
+        \code{datetime-local} inputs use a \code{T} separator, converted by \code{to_db_time()}.
+  \item[Foreign keys.] SQLite enforces them only when \code{PRAGMA foreign_keys = ON} is run on the
+        connection; \code{get_db()} does this every time.
+  \item[Rows as dicts.] \code{row_factory = sqlite3.Row}, so code writes \code{row["title"]}.
+        Report functions convert rows with \code{dict(row)} before adding computed keys.
+  \item[Seats left] are never stored; they are computed as \code{capacity - COUNT(r.id)} with a
+        \code{LEFT JOIN} on \code{registrations}, so they can never get out of step.
+\end{description}
+
+\subsection{Indexes}
+
+\code{sql/indexes.sql} is deliberately separate from the schema: the indexes were the result of
+profiling, and keeping them apart lets the profiler measure with and without them
+(\code{APPLY_INDEXES=0}).
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Index} & \textbf{Columns} & \textbf{Speeds up} \\
+\midrule
+\code{idx_registrations_event} & \code{registrations(event_id)} & every seats-left count and report \code{JOIN}; covering index for counts \\
+\code{idx_events_venue_start}  & \code{events(venue_id, start_time)} & venue filter in search, venue clash check \\
+\code{idx_events_category}     & \code{events(category)} & category filter in search \\
+\code{sqlite_autoindex_registrations_1} & \code{(user_id, event_id)} & created automatically by the \code{UNIQUE} constraint; serves ``is this student registered?'' and My registrations \\
+\bottomrule
+\end{tabularx}
+\caption{Indexes. An extra index on \texttt{registrations(user\_id)} was rejected as redundant.}
+\end{table}
+
+% =====================================================================
+\section{Route reference}
+
+{\small
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.37\linewidth} l l X@{}}
+\toprule
+\textbf{URL} & \textbf{Method} & \textbf{Access} & \textbf{Endpoint and purpose} \\
+\midrule
+\endhead
+\route{/}                                   & GET      & all     & \code{index}: home page with counts \\
+\midrule
+\route{/auth/register}                      & GET/POST & all     & \code{auth.register}: student sign-up \\
+\route{/auth/login}                         & GET/POST & all     & \code{auth.login} \\
+\route{/auth/logout}                        & GET      & login   & \code{auth.logout} \\
+\midrule
+\route{/events/}                            & GET      & all     & \code{events.list_events}: upcoming events; query params \code{q}, \code{category}, \code{venue_id}, \code{date_from}, \code{date_to} \\
+\route{/events/<id>}                        & GET      & all     & \code{events.event_detail} \\
+\route{/events/<id>/register}               & POST     & login   & \code{events.register_for_event} \\
+\route{/events/<id>/cancel}                 & POST     & login   & \code{events.cancel_registration}; form field \code{return_to=my} returns to My registrations \\
+\route{/my-registrations}                   & GET      & login   & \code{events.my_registrations} \\
+\midrule
+\route{/admin/}                             & GET      & admin   & \code{admin.dashboard} \\
+\route{/admin/venues}                       & GET      & admin   & \code{admin.list_venues} \\
+\route{/admin/venues/new}                   & GET/POST & admin   & \code{admin.create_venue} \\
+\route{/admin/venues/<id>/edit}             & GET/POST & admin   & \code{admin.edit_venue} \\
+\route{/admin/venues/<id>/delete}           & POST     & admin   & \code{admin.delete_venue} \\
+\route{/admin/events}                       & GET      & admin   & \code{admin.list_events}: all events incl.\ past \\
+\route{/admin/events/new}                   & GET/POST & admin   & \code{admin.create_event} \\
+\route{/admin/events/<id>/edit}             & GET/POST & admin   & \code{admin.edit_event} \\
+\route{/admin/events/<id>/delete}           & POST     & admin   & \code{admin.delete_event} \\
+\route{/admin/events/<id>/participants}     & GET      & admin   & \code{admin.participants} \\
+\route{/admin/events/<id>/}\newline\hspace*{1em}\route{participants.csv} & GET & admin & \code{admin.participants_csv}: CSV download \\
+\route{/admin/reports}                      & GET      & admin   & \code{admin.reports_page} \\
+\midrule
+\route{/static/<path>}                      & GET      & all     & \code{static}: \code{style.css} \\
+\bottomrule
+\caption{All 22 URL rules (from \texttt{flask --app app routes}). \emph{login}: visitors are
+redirected to the login page. \emph{admin}: visitors are redirected, students get 403.
+\texttt{<id>} is an integer; anything else gives 404.}
+\end{xltabular}}
+
+% =====================================================================
+\section{Module reference}
+
+Signatures are shown in grey boxes. ``Returns'' describes the value; routes return a rendered page
+or a redirect.
+
+\subsection{\texorpdfstring{\code{app/db.py}}{app/db.py}: database access}
+
+\fn{get_db() -> sqlite3.Connection}{Returns the connection for the current request, opening it on
+first use and storing it in \code{g.db}. Sets \code{row_factory = sqlite3.Row} and
+\code{PRAGMA foreign_keys = ON}.}
+
+\fn{close_db(error=None)}{Closes \code{g.db} if one was opened. Registered with
+\code{app.teardown_appcontext}, so it runs after every request and app context.}
+
+\fn{init_db()}{Runs \code{sql/schema.sql} with \code{executescript}. Destroys existing data.}
+
+\fn{add_indexes()}{Runs \code{sql/indexes.sql}. Idempotent (\code{IF NOT EXISTS}).}
+
+\fn{init_db_command / add_indexes_command / create_admin_command}{Click commands \code{init-db},
+\code{add-indexes}, \code{create-admin --name --email --password}. \code{create-admin} skips an
+existing email and stores \code{generate_password_hash(password)}.}
+
+\fn{init_app(app)}{Registers \code{close_db} and the three commands on the app.}
+
+\subsection{\texorpdfstring{\code{app/auth.py}}{app/auth.py}: accounts and access control}
+
+\fn{class User(UserMixin)}{Built from a \code{users} row; attributes \code{id}, \code{name},
+\code{email}, \code{role}; property \code{is_admin}. \code{UserMixin} supplies
+\code{is_authenticated}, \code{get_id()} and friends.}
+
+\fn{load_user(user_id) -> User | None}{The Flask-Login user loader: one \code{SELECT} by id on every
+request that uses \code{current_user}. Returns \code{None} for a deleted user, which logs them out.}
+
+\fn{admin_required(view)}{Decorator. Not logged in: \code{login_manager.unauthorized()} (redirect to
+login). Logged in but not admin: \code{abort(403)}. Uses \code{functools.wraps} so Flask still sees the
+original function name as the endpoint.}
+
+\fn{register()}{GET shows the form; POST validates name (non-empty), email (contains \code{@}, lower-cased)
+and password (at least 6 characters), then inserts with role \code{'student'}. A duplicate email
+raises \code{sqlite3.IntegrityError}, shown as a friendly message. Logged-in users are redirected.}
+
+\fn{login()}{Looks up the email, verifies with \code{check_password_hash}, calls
+\code{login_user(User(row))}. The same message is used for an unknown email and a wrong password.}
+
+\fn{logout()}{\code{@login_required}; calls \code{logout_user()} and redirects home.}
+
+\subsection{\texorpdfstring{\code{app/events.py}}{app/events.py}: browsing and registrations}
+
+\fn{CATEGORIES = ["Technical", "Cultural", "Sports", "Workshop", "Seminar"]}{The single list of
+categories, imported by \code{admin.py} and \code{seed.py}.}
+
+\fn{now_string() -> str}{Current local time as \code{'YYYY-MM-DD HH:MM'}.}
+
+\fn{get_event(event_id) -> Row | None}{One event joined with its venue and organiser, plus
+\code{seats_left}. \code{LEFT JOIN registrations ... GROUP BY e.id}.}
+
+\fn{is_registered(user_id, event_id) -> bool}{\code{SELECT 1} on the unique pair.}
+
+\fn{build_search_sql(keyword="", category="", venue_id=None, date_from="", date_to="") -> (str, list)}{
+Builds the search query. Starts with \code{e.start_time >= now}; adds a condition for each non-empty
+filter. \code{conditions} only ever contains fixed SQL written in the code; user input goes into
+\code{params}. Keyword matches title or description with \texttt{LIKE '\%text\%'} (case-insensitive for
+ASCII). \code{date_to} has \code{" 23:59"} appended so the whole day is included. Separate from execution
+so \code{profiling/explain.py} can explain exactly the same SQL.}
+
+\fn{search_events(...) -> list[Row]}{Runs \code{build_search_sql} with the same arguments.}
+
+\fn{list_events()}{Reads filters from \code{request.args} (\code{venue_id} with \code{type=int}, so bad
+input becomes \code{None}), calls \code{search_events}, loads venues for the dropdown and passes the
+filters back to keep the form filled in.}
+
+\fn{event_detail(event_id)}{404 if missing; computes \code{is_registered} and \code{has_started} for
+the template's action area.}
+
+\fn{register_for_event(event_id)}{POST, login required. Applies the registration rules
+(Section~\ref{sec:rules}) and inserts; \code{registered_at} comes from the column default.}
+
+\fn{cancel_registration(event_id)}{POST, login required. Refuses after the start; otherwise
+\code{DELETE} and uses \code{cursor.rowcount} to tell whether a row existed. Redirects to My
+registrations when \code{return_to=my}, otherwise to the detail page.}
+
+\fn{my_registrations()}{The current user's upcoming registrations joined with event and venue,
+ordered by start time.}
+
+\subsection{\texorpdfstring{\code{app/admin.py}}{app/admin.py}: administration}
+
+All routes are decorated with \code{@admin_required}.
+
+\fn{to_db_time(value) -> str | None}{\code{'2026-11-20T14:30'} $\rightarrow$
+\code{'2026-11-20 14:30'}; \code{None} if it does not parse.}
+
+\fn{find_clash(venue_id, start_time, end_time, ignore_event_id=None) -> Row | None}{First event at the
+venue whose interval overlaps: \code{start_time < new_end AND end_time > new_start}. Touching
+intervals do not clash. \code{ignore_event_id} excludes the event being edited.}
+
+\fn{read_event_form(form, event_id=None) -> (dict, None) | (None, str)}{Validates and normalises the
+event form (Section~\ref{sec:rules}). Returns the clean values or the first error message.}
+
+\fn{read_venue_form(form, venue_id=None) -> (dict, None) | (None, str)}{Name and location required,
+capacity a positive integer; when editing, not below \code{MAX(capacity)} of the venue's events.}
+
+\fn{get_participants(event_id) -> list[Row]}{Name, email, \code{registered_at}, earliest first.}
+
+\fn{dashboard()}{One query with five scalar sub-queries: events, upcoming, venues, students,
+registrations.}
+
+\fn{list_venues(), create_venue(), edit_venue(venue_id), delete_venue(venue_id)}{Venue CRUD. Forms
+redisplay the submitted values on error. Delete refuses while events use the venue (the foreign key
+would also block it).}
+
+\fn{list_events(), create_event(), edit_event(event_id), delete_event(event_id)}{Event CRUD.
+\code{created_by} is \code{current_user.id}. Edit pre-fills \code{datetime-local} values by replacing the
+space with \code{T}. Delete relies on \code{ON DELETE CASCADE} to remove registrations and returns 404 when
+nothing was deleted.}
+
+\fn{all_venues(), get_event_or_404(event_id)}{Small helpers for the event form dropdown and the
+participant pages.}
+
+\fn{participants(event_id), participants_csv(event_id)}{HTML list, and the same rows written with
+\code{csv.writer} into \code{io.StringIO}, returned as \code{text/csv} with
+\code{Content-Disposition: attachment; filename=event_<id>_participants.csv}.}
+
+\fn{reports_page()}{Renders \code{admin/reports.html} with the three report functions.}
+
+\subsection{\texorpdfstring{\code{app/reports.py}}{app/reports.py}: report queries}
+
+The SQL is held in module constants so \code{profiling/explain.py} can explain the same text.
+
+\fn{percent(part, whole) -> float}{\code{round(100 * part / whole, 1)}, or 0.0 when \code{whole} is 0.
+Done in Python because Python and SQLite round halves differently, and the numbers had to match the
+first version exactly.}
+
+\fn{event_stats() -> list[dict]}{\code{EVENT_STATS_SQL}: every event with \code{registered}
+(\code{LEFT JOIN} + \code{COUNT(r.id)}), sorted by registrations, start, id; adds \code{fill_rate}.}
+
+\fn{popular_categories() -> list[dict]}{\code{CATEGORIES_SQL}: per category,
+\code{COUNT(DISTINCT e.id)} events (the join repeats events) and \code{COUNT(r.id)} registrations.}
+
+\fn{venue_utilisation() -> list[dict]}{\code{VENUES_SQL}: a derived table counts registrations per
+event first, then the outer query sums events, registrations and capacity per venue (so capacity is
+not multiplied by the number of registrations). \code{LEFT JOIN} keeps venues without events.
+Adds \code{utilisation}.}
+
+\begin{lstlisting}[language=SQL, caption={VENUES\_SQL: the most involved report query.}]
+SELECT v.id, v.name, v.location,
+       COUNT(e.id) AS events,
+       COALESCE(SUM(e.registered), 0) AS registrations,
+       COALESCE(SUM(e.capacity), 0)   AS seats_offered
+FROM venues v
+LEFT JOIN (
+    SELECT ev.id, ev.venue_id, ev.capacity, COUNT(r.id) AS registered
+    FROM events ev
+    LEFT JOIN registrations r ON r.event_id = ev.id
+    GROUP BY ev.id
+) AS e ON e.venue_id = v.id
+GROUP BY v.id
+ORDER BY registrations DESC, v.name
+\end{lstlisting}
+
+\subsection{\texorpdfstring{\code{app/seed.py}}{app/seed.py}: demo data}
+
+\fn{seed_command(num_events=50, num_students=100)}{The \code{flask seed} command. Seeds \code{random}
+and Faker with 42 for reproducible data. Requires an admin (the organiser). Deletes registrations,
+events, venues and students, resets their \code{sqlite_sequence} counters, inserts the 10 fixed
+\code{VENUES}, students with one shared pre-computed password hash (hashing is deliberately slow),
+events on random non-clashing slots in the next 60 days (gives up after \code{20 * N} attempts), and
+for each event a \code{random.sample} of distinct students no larger than its capacity.}
+
+\fn{overlaps(start, end, booked_slots) -> bool}{The same overlap rule as \code{find_clash}, on
+Python \code{datetime} pairs.}
+
+% =====================================================================
+\section{Business rules}
+\label{sec:rules}
+
+\subsection{Registration}
+
+\code{register_for_event} checks, in this order, and stops at the first failure:
+
+\begin{enumerate}
+  \item user is not an admin;
+  \item \code{start_time > now} (the event has not started);
+  \item no existing registration (also guaranteed by \code{UNIQUE (user_id, event_id)});
+  \item \code{seats_left > 0}.
+\end{enumerate}
+
+Cancellation is allowed only before the event starts.
+
+\subsection{Event validation (\texorpdfstring{\code{read_event_form}}{read\_event\_form})}
+
+\begin{enumerate}
+  \item title not empty;
+  \item category in \code{CATEGORIES};
+  \item start and end are valid \code{datetime-local} values;
+  \item end after start (also a \code{CHECK} constraint);
+  \item capacity is an integer above 0 (also a \code{CHECK});
+  \item venue exists, and capacity $\le$ venue capacity;
+  \item when editing: capacity $\ge$ current registrations;
+  \item no clash at the venue (\code{find_clash}, ignoring the event itself when editing).
+\end{enumerate}
+
+\subsection{The overlap rule}
+
+Two half-open intervals $[s_1, e_1)$ and $[s_2, e_2)$ overlap exactly when
+$s_1 < e_2 \land e_1 > s_2$. This single condition covers partial overlap on either side,
+containment in both directions and identical intervals, while letting back-to-back events share a
+boundary.
+
+\subsection{Venue rules}
+
+Name and location required; capacity a positive integer; on edit, not smaller than the largest event
+at the venue; delete only when no events use the venue.
+
+% =====================================================================
+\section{Templates and styling}
+
+\subsection{Template inheritance}
+
+Every page extends \code{templates/base.html}, which defines the \code{title} and \code{content}
+blocks, the navigation bar (links depend on \code{current_user}), the flash-message area and the
+footer. Jinja2 auto-escapes all variables, so user-supplied text such as event descriptions cannot
+inject HTML.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Template} & \textbf{Rendered by / purpose} \\
+\midrule
+\code{base.html}                    & layout shared by all pages \\
+\code{index.html}                   & \code{index}: welcome text and counts \\
+\code{error.html}                   & 403 and 404 handlers (\code{code}, \code{message}) \\
+\code{auth/login.html}, \code{auth/register.html} & login and sign-up forms \\
+\code{events/list.html}             & search form and event cards \\
+\code{events/detail.html}           & one event and the Register / Cancel action area \\
+\code{events/my_registrations.html} & student's upcoming registrations with Cancel buttons \\
+\code{admin/dashboard.html}         & counters and shortcuts \\
+\code{admin/venues.html}, \code{admin/venue_form.html} & venue list; shared new/edit form (\code{venue_id} is \code{None} for new) \\
+\code{admin/events.html}, \code{admin/event_form.html} & event list; shared new/edit form \\
+\code{admin/participants.html}      & participant table and Export CSV button \\
+\code{admin/reports.html}           & three report tables and CSS fill-rate bars \\
+\bottomrule
+\end{tabularx}
+\caption{The 15 templates.}
+\end{table}
+
+\begin{warning}[Jinja comments]
+Jinja processes tags even inside HTML comments, so \verb|<!-- {% block %} -->| breaks the template.
+Use Jinja's own comment syntax \verb|{# ... #}| for comments that mention template tags.
+\end{warning}
+
+\subsection{CSS}
+
+\code{static/style.css} is the only stylesheet. Colours and sizes are CSS custom properties on
+\code{:root} (\texttt{-{}-primary: \#1d4ed8}, \code{--error}, \code{--radius} \dots), so the palette is
+changed in one place. Layout uses flexbox (header, sticky footer, search form that wraps) and CSS
+grid (\code{repeat(auto-fill, minmax(280px, 1fr))} for event cards, so the number of columns follows
+the screen width). Wide tables sit in a wrapper with \code{overflow-x: auto} for phones. Fill-rate bars
+on the reports page are a \code{span} inside a \code{div} whose \code{width} style is the percentage.
+
+% =====================================================================
+\section{Security model}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Threat} & \textbf{Mitigation} \\
+\midrule
+SQL injection        & every value through \code{?} placeholders; SQL text never built from input \\
+HTML injection (XSS) & Jinja2 auto-escaping \\
+Stolen passwords     & salted, slow hashes (Werkzeug); generic login error message \\
+Privilege escalation & role fixed to \code{'student'} at sign-up; \code{admin_required} on every admin route; DB \code{CHECK} on role \\
+Cross-site requests  & all state changes are POST; \code{SameSite=Lax} session cookie \\
+Accidental GET side effects & delete/register/cancel are forms, never links \\
+Bad IDs              & \code{<int:...>} URL converters and 404s \\
+\bottomrule
+\end{tabularx}
+\caption{Security measures.}
+\end{table}
+
+\paragraph{Known limitations.} No CSRF tokens (\code{SameSite} covers most cases); the seat check and
+the insert are two statements, so two simultaneous requests for the last seat could over-book by one;
+\code{/auth/logout} is a GET; the default \code{SECRET_KEY} must be replaced in production; keyword
+search cannot use an index because of the leading \texttt{\%} wildcard.
+
+% =====================================================================
+\section{Testing}
+
+Tests live in \code{tests/} and run with \code{./scripts/test.sh}. \code{pytest.ini} sets
+\code{testpaths = tests} and \code{pythonpath = .} so tests can \code{import app}.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Fixture} & \textbf{Provides} \\
+\midrule
+\code{app}            & \code{create_app} with \code{TESTING=True} and a database in \code{tmp_path}; schema applied \\
+\code{client}         & \code{app.test_client()}: a fake browser \\
+\code{auth}           & \code{AuthActions} with \code{register()} and \code{login()} helpers \\
+\code{admin_user}     & an admin inserted directly with SQL \\
+\code{sample_events}  & one venue and four events (three upcoming, one past); returns \texttt{\{title: id\}} \\
+\code{student_client} & client logged in as a newly registered student \\
+\code{admin_client}   & client logged in as the admin \\
+\bottomrule
+\end{tabularx}
+\caption{Fixtures in \texttt{tests/conftest.py}.}
+\end{table}
+
+When you add a feature, add tests next to the related ones and run the whole suite. The Test Plan \&
+Report lists every existing test case.
+
+% =====================================================================
+\section{Profiling toolkit}
+
+\begin{description}
+  \item[\code{scripts/profile.sh <label> [N]}] creates \code{profiling/profile.db} (via
+        \code{CAMPUS_DB}), seeds N events, optionally adds indexes, then runs the two modules below.
+  \item[\code{profiling/run_profile.py}] for each workload in \code{WORKLOADS}: \code{RUNS} timed runs
+        with \code{time.perf_counter()} and SQL statements counted with
+        \code{conn.set_trace_callback}; then one run under \code{cProfile}. Writes
+        \code{profile.prof}, \code{profile_stats.txt} (top 20 by cumulative time) and
+        \code{timings.txt}.
+  \item[\code{profiling/explain.py}] writes \code{EXPLAIN QUERY PLAN} output for the search variants,
+        the naive per-event count, the three report queries, the clash check and the
+        ``is registered'' query to \code{query_plans.txt}.
+\end{description}
+
+To profile a new function, add a \code{("name", function)} pair to \code{WORKLOADS}, and its SQL to
+\code{queries()} in \code{explain.py}. View a profile with \code{snakeviz profiling/<label>/profile.prof}.
+The saved results in \code{profiling/before/} are the evidence of the naive version and must not be
+overwritten; results and analysis are in \code{profiling/RESULTS.md} and the project report.
+
+% =====================================================================
+\section{Extending the application}
+
+\subsection{Add a page}
+\begin{enumerate}
+  \item Add a view function to the right Blueprint, with \code{@login_required} or
+        \code{@admin_required} as needed.
+  \item Put any logic worth testing in a plain function next to it.
+  \item Create a template whose first line is \verb|{% extends "base.html" %}|, and link
+        to the page with \code{url_for("blueprint.function")}.
+  \item Add tests for the happy path, each refusal, and access control.
+\end{enumerate}
+
+\subsection{Change the schema}
+\begin{enumerate}
+  \item Edit \code{sql/schema.sql} (constraints belong in the database where possible).
+  \item Update every \code{INSERT}/\code{SELECT} that touches the table, the seed command and fixtures.
+  \item Recreate the database with \code{./scripts/setup.sh} (there are no migrations; this wipes data).
+  \item If a new query filters or joins on a column, check its plan with \code{EXPLAIN QUERY PLAN} and
+        add an index to \code{sql/indexes.sql} only if it helps.
+\end{enumerate}
+
+\subsection{Add a category or a report}
+Categories: add the name to \code{CATEGORIES} in \code{events.py} (and optionally to \code{TITLES} in
+\code{seed.py}). Reports: write one SQL query as a constant in \code{reports.py}, a function that runs
+it, a table in \code{admin/reports.html}, and a test with exact expected numbers.
+
+\subsection{Coding conventions}
+\begin{itemize}
+  \item PEP 8 style, descriptive names, a docstring on every function, comments that explain why.
+  \item SQL keywords in upper case; one clause per line in longer queries; table aliases
+        \code{e}, \code{v}, \code{r}, \code{u}.
+  \item Every data-changing request is POST and ends in a redirect.
+  \item Bash scripts: \code{set -euo pipefail}, source \code{common.sh}, clear \code{echo} progress
+        messages, LF line endings (enforced by \code{.gitattributes}).
+\end{itemize}
+
+\subsection{Git workflow}
+Small commits on \code{main}, each leaving the tests passing, using Conventional Commit prefixes:
+\code{feat:}, \code{fix:}, \code{test:}, \code{perf:}, \code{chore:}, \code{docs:}. Generated files
+(\code{venv/}, \code{*.db}, \code{__pycache__}, LaTeX build files) are in \code{.gitignore}.
+
+\end{document}

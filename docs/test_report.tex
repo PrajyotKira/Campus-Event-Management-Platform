@@ -1,0 +1,433 @@
+% =====================================================================
+%  Test Plan & Report: strategy, every test case, traceability, results.
+%  Build: ./scripts/build_docs.sh   (or compile in docs/ with pdflatex)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+\usepackage{campusdoc}
+
+% Test case table: ID | test function | what is checked (expected result)
+\newenvironment{testcases}{%
+  \small
+  \xltabular{\linewidth}{@{}>{\ttfamily}l >{\raggedright\arraybackslash}p{0.33\linewidth} X @{}}
+  \toprule
+  \textbf{\textrm{ID}} & \textbf{Test function} & \textbf{Scenario and expected result} \\
+  \midrule
+  \endhead
+}{%
+  \bottomrule
+  \endxltabular
+}
+% Test function name that may wrap after any underscore.
+\newcommand{\tfn}[1]{{\ttfamily\footnotesize #1}}
+\newcommand{\pass}{\textcolor{okgreen}{\textbf{PASS}}}
+
+\begin{document}
+
+\makedoctitle{Test Plan \& Report}{Testing strategy, test cases and results}{CEMP-TR-01}
+
+\tableofcontents
+\newpage
+
+% =====================================================================
+\section{Summary}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}l r@{}}
+\toprule
+Automated test cases          & \textbf{45} \\
+Passed                        & \textbf{\textcolor{okgreen}{45}} \\
+Failed / errors / skipped     & 0 / 0 / 0 \\
+Run time                      & about 7 seconds \\
+Line coverage of \code{app/}  & 76\% (\code{reports.py} 100\%) \\
+\bottomrule
+\end{tabular}
+\caption{Result of the latest full run (10 November 2026).}
+\end{table}
+
+All 45 automated tests pass. They cover authentication and roles, browsing and searching, the
+registration rules, admin management with validation and the venue clash check, participant CSV
+export, and the exact numbers produced by the three reports. Untested code is mainly the demo-data
+command (\code{seed.py}) and some admin error paths, listed in Section~\ref{sec:coverage}.
+
+% =====================================================================
+\section{Test plan}
+
+\subsection{Objectives}
+
+\begin{enumerate}
+  \item Confirm that every feature in the requirements works as specified.
+  \item Confirm that every \emph{refusal} works: invalid input, full or started events, duplicate
+        registrations, venue clashes and access by the wrong role are rejected and change nothing.
+  \item Protect the profiling optimisation: the reports must return exactly the same numbers after
+        the query rewrite and with or without indexes.
+  \item Make tests fast and repeatable so they can be run before every commit.
+\end{enumerate}
+
+\subsection{Scope}
+
+\begin{description}
+  \item[In scope] All routes in \code{auth}, \code{events} and \code{admin}; the helper functions
+        \code{find_clash}, \code{percent} and the three report functions; database constraints that
+        the code relies on (unique registrations, cascade delete).
+  \item[Out of scope for automation] Visual layout and CSS, browser \code{confirm()} dialogs, the
+        Bash scripts, the \code{seed} command, and performance (measured separately with
+        \code{cProfile}, see the project report). These are covered by the manual checklist in
+        Section~\ref{sec:manual}.
+\end{description}
+
+\subsection{Approach}
+
+\paragraph{Level.} Mostly \emph{functional} tests through Flask's test client, which sends real
+HTTP requests to the application without starting a server, so each test exercises routing,
+login, validation, SQL and templates together. A few \emph{unit} tests call plain functions
+(\code{find_clash}, \code{percent}, the report functions) directly.
+
+\paragraph{Isolation.} The \code{app} fixture creates a new application for \emph{every} test with
+its database in pytest's per-test temporary folder, and runs \code{sql/schema.sql} on it. Tests can
+never see each other's data or touch \code{instance/campus.db}.
+
+\paragraph{Assertions on outcomes.} Tests check both what the user sees (status code, redirect
+target, flash message text) and what is stored (a direct SQL query afterwards). A refused action
+must leave the row count unchanged.
+
+\paragraph{Exact expected values.} Report tests compare against hand-calculated numbers. They
+check \emph{what} is computed, not \emph{how}, so they passed unchanged before and after the
+optimisation.
+
+\subsection{Test environment}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Framework   & pytest 8 with Flask's test client; configuration in \code{pytest.ini} (\code{testpaths = tests}, \code{pythonpath = .}) \\
+Command     & \code{./scripts/test.sh} (runs \code{python -m pytest -v}) \\
+Database    & a fresh SQLite file per test in \code{tmp_path} \\
+Environments& Windows 11 + Git Bash + Python 3.14 (development machine); Linux + Python 3.13 (run recorded in Section~\ref{sec:results}) \\
+\bottomrule
+\end{tabularx}
+\caption{Test environment.}
+\end{table}
+
+\subsection{Fixtures and test data}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Fixture} & \textbf{Provides} \\
+\midrule
+\code{app}            & application with \code{TESTING=True} and an empty temporary database \\
+\code{client}         & test client (fake browser) \\
+\code{auth}           & \code{register()} / \code{login()} helpers; default student \code{student@test.com} / \code{secret123} \\
+\code{admin_user}     & admin \code{admin@test.com} / \code{adminpass}, inserted with SQL \\
+\code{sample_events}  & venue ``Seminar Hall A'' (capacity 100) and four events, returned as \texttt{\{title: id\}} \\
+\code{student_client} & client logged in as the default student \\
+\code{admin_client}   & client logged in as the admin \\
+\code{report_data}    & (in \code{test_reports.py}) adds an empty venue and 6 registrations with known counts \\
+\bottomrule
+\end{tabularx}
+\caption{Fixtures (\texttt{tests/conftest.py}).}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}l l l r l@{}}
+\toprule
+\textbf{Event} & \textbf{Category} & \textbf{Starts} & \textbf{Capacity} & \textbf{Why it exists} \\
+\midrule
+Python Workshop  & Workshop  & in 2 days    & 30 & ``Python'' in the title \\
+Football Match   & Sports    & in 3 days    & 50 & does not match ``python'' \\
+Hackathon        & Technical & in 4 days    & 40 & ``Python'' only in the description \\
+Old Python Talk  & Seminar   & 3 days ago   & 40 & past: must never be listed or bookable \\
+\bottomrule
+\end{tabular}
+\caption{The \texttt{sample\_events} data set. Each event lasts 0.1 day (2.4 hours).}
+\end{table}
+
+% =====================================================================
+\section{Test cases}
+
+Each case lists its ID, the pytest function (in the file named in the subsection title) and the
+scenario with the expected result. All cases passed in the run recorded in Section~\ref{sec:results}.
+
+\subsection{Authentication and roles (\texorpdfstring{\code{test_auth.py}}{test\_auth.py}, 7 tests)}
+
+\begin{testcases}
+AUTH-01 & \tfn{test\_\allowbreak{}register\_\allowbreak{}creates\_\allowbreak{}student} & Register a new account $\rightarrow$ 302 redirect to \route{/auth/login}; the row exists with role \code{student}; the stored hash is not the plain password. \\
+AUTH-02 & \tfn{test\_\allowbreak{}duplicate\_\allowbreak{}email\_\allowbreak{}rejected} & Register twice with the same email $\rightarrow$ ``already exists''; still exactly one user with that email. \\
+AUTH-03 & \tfn{test\_\allowbreak{}login\_\allowbreak{}with\_\allowbreak{}correct\_\allowbreak{}password\_\allowbreak{}works} & Log in with the right password $\rightarrow$ 302; the events page now shows \emph{Logout}. \\
+AUTH-04 & \tfn{test\_\allowbreak{}login\_\allowbreak{}with\_\allowbreak{}wrong\_\allowbreak{}password\_\allowbreak{}fails} & Wrong password $\rightarrow$ 200 on the login page with ``Invalid email or password''; not logged in. \\
+AUTH-05 & \tfn{test\_\allowbreak{}student\_\allowbreak{}gets\_\allowbreak{}403\_\allowbreak{}on\_\allowbreak{}admin\_\allowbreak{}route} & Student opens \route{/admin/} $\rightarrow$ 403. \\
+AUTH-06 & \tfn{test\_\allowbreak{}admin\_\allowbreak{}can\_\allowbreak{}open\_\allowbreak{}admin\_\allowbreak{}route} & Admin opens \route{/admin/} $\rightarrow$ 200 with ``Admin dashboard''. \\
+AUTH-07 & \tfn{test\_\allowbreak{}logged\_\allowbreak{}out\_\allowbreak{}user\_\allowbreak{}is\_\allowbreak{}sent\_\allowbreak{}to\_\allowbreak{}login\_\allowbreak{}from\_\allowbreak{}admin\_\allowbreak{}route} & Visitor opens \route{/admin/} $\rightarrow$ 302 to the login page. \\
+\end{testcases}
+
+\subsection{Browsing and search (\texorpdfstring{\code{test_events.py}}{test\_events.py}, 5 tests)}
+
+\begin{testcases}
+EVT-01 & \tfn{test\_\allowbreak{}event\_\allowbreak{}list\_\allowbreak{}shows\_\allowbreak{}only\_\allowbreak{}upcoming\_\allowbreak{}events} & \route{/events/} lists Python Workshop and Football Match but not the past Old Python Talk. \\
+EVT-02 & \tfn{test\_\allowbreak{}keyword\_\allowbreak{}search\_\allowbreak{}returns\_\allowbreak{}only\_\allowbreak{}matching\_\allowbreak{}events} & \route{?q=python} matches the title (case-insensitive) and the description (Hackathon); excludes Football Match and the past event. \\
+EVT-03 & \tfn{test\_\allowbreak{}category\_\allowbreak{}filter} & \route{?category=Sports} shows Football Match only. \\
+EVT-04 & \tfn{test\_\allowbreak{}seats\_\allowbreak{}left\_\allowbreak{}counts\_\allowbreak{}registrations} & One registration on a 30-seat event $\rightarrow$ detail page shows ``29 of 30 left''. \\
+EVT-05 & \tfn{test\_\allowbreak{}missing\_\allowbreak{}event\_\allowbreak{}returns\_\allowbreak{}404} & \route{/events/9999} $\rightarrow$ 404. \\
+\end{testcases}
+
+\subsection{Registrations (\texorpdfstring{\code{test_registrations.py}}{test\_registrations.py}, 8 tests)}
+
+\begin{testcases}
+REG-01 & \tfn{test\_\allowbreak{}register\_\allowbreak{}for\_\allowbreak{}event} & Student registers $\rightarrow$ ``You are registered'', ``29 of 30 left'', one row stored. \\
+REG-02 & \tfn{test\_\allowbreak{}double\_\allowbreak{}registration\_\allowbreak{}rejected} & Second registration $\rightarrow$ ``already registered''; still one row. \\
+REG-03 & \tfn{test\_\allowbreak{}full\_\allowbreak{}event\_\allowbreak{}rejected} & Capacity 1 already taken by another student $\rightarrow$ ``full''; count stays 1. \\
+REG-04 & \tfn{test\_\allowbreak{}started\_\allowbreak{}event\_\allowbreak{}rejected} & Register for the past event $\rightarrow$ ``already started''; no row. \\
+REG-05 & \tfn{test\_\allowbreak{}cancel\_\allowbreak{}registration} & Register then cancel $\rightarrow$ ``was cancelled''; no row. \\
+REG-06 & \tfn{test\_\allowbreak{}my\_\allowbreak{}registrations\_\allowbreak{}lists\_\allowbreak{}only\_\allowbreak{}my\_\allowbreak{}events} & My registrations shows the registered event and not others. \\
+REG-07 & \tfn{test\_\allowbreak{}cancel\_\allowbreak{}from\_\allowbreak{}my\_\allowbreak{}registrations\_\allowbreak{}returns\_\allowbreak{}there} & Cancel with \code{return_to=my} $\rightarrow$ redirect to \route{/my-registrations}. \\
+REG-08 & \tfn{test\_\allowbreak{}must\_\allowbreak{}be\_\allowbreak{}logged\_\allowbreak{}in\_\allowbreak{}to\_\allowbreak{}register} & Visitor POSTs to register $\rightarrow$ redirect to login. \\
+\end{testcases}
+
+\subsection{Administration (\texorpdfstring{\code{test_admin.py}}{test\_admin.py}, 18 tests)}
+
+\begin{testcases}
+ADM-01 & \tfn{test\_\allowbreak{}find\_\allowbreak{}clash} & Unit test of the overlap rule against the workshop: identical times, overlap at the start and fully inside all clash; ending exactly at its start, a different venue, and ignoring the event itself do not. \\
+ADM-02 & \tfn{test\_\allowbreak{}create\_\allowbreak{}event} & Admin creates an event $\rightarrow$ ``created''; \code{2030-05-01T10:00} is stored as \code{2030-05-01 10:00}. \\
+ADM-03 & \tfn{test\_\allowbreak{}venue\_\allowbreak{}clash\_\allowbreak{}rejected} & New event at the workshop's venue and times $\rightarrow$ ``already booked''; event count unchanged. \\
+ADM-04 & \tfn{test\_\allowbreak{}edit\_\allowbreak{}does\_\allowbreak{}not\_\allowbreak{}clash\_\allowbreak{}with\_\allowbreak{}itself} & Edit only the title of an event $\rightarrow$ ``updated''; new title stored. \\
+ADM-05 & \tfn{test\_\allowbreak{}capacity\_\allowbreak{}over\_\allowbreak{}venue\_\allowbreak{}capacity\_\allowbreak{}rejected} & Capacity 500 at a 100-seat venue $\rightarrow$ ``cannot be more than the capacity''; still 4 events. \\
+ADM-06 & \tfn{test\_\allowbreak{}end\_\allowbreak{}before\_\allowbreak{}start\_\allowbreak{}rejected} & End before start $\rightarrow$ ``must end after it starts''. \\
+ADM-07 & \tfn{test\_\allowbreak{}delete\_\allowbreak{}event\_\allowbreak{}removes\_\allowbreak{}its\_\allowbreak{}registrations} & Delete an event with a registration $\rightarrow$ event gone and its registrations removed (\code{ON DELETE CASCADE}). \\
+ADM-08 & \tfn{test\_\allowbreak{}create\_\allowbreak{}venue} & Create venue ``New Hall'' capacity 75 $\rightarrow$ listed and stored. \\
+ADM-09 & \tfn{test\_\allowbreak{}venue\_\allowbreak{}with\_\allowbreak{}events\_\allowbreak{}cannot\_\allowbreak{}be\_\allowbreak{}deleted} & Delete a venue in use $\rightarrow$ ``Cannot delete''; venue still exists. \\
+ADM-10a--g & \tfn{test\_\allowbreak{}student\_\allowbreak{}cannot\_\allowbreak{}open\_\allowbreak{}admin\_\allowbreak{}pages} \newline (parametrised, 7 cases) & A student GETs each of \route{/admin/venues}, \route{/admin/venues/new}, \route{/admin/events}, \route{/admin/events/new}, \route{/admin/events/1/edit}, \route{/admin/events/1/participants}, \route{/admin/events/1/participants.csv} $\rightarrow$ 403 every time. \\
+ADM-11 & \tfn{test\_\allowbreak{}student\_\allowbreak{}cannot\_\allowbreak{}delete\_\allowbreak{}event} & Student POSTs delete $\rightarrow$ 403; event still exists. \\
+ADM-12 & \tfn{test\_\allowbreak{}csv\_\allowbreak{}export\_\allowbreak{}returns\_\allowbreak{}the\_\allowbreak{}right\_\allowbreak{}rows} & Three students, two on the workshop $\rightarrow$ CSV is \code{text/csv}, an attachment, and contains exactly the header plus Asha and Ravi in registration order (not Meera). \\
+\end{testcases}
+
+\subsection{Reports (\texorpdfstring{\code{test_reports.py}}{test\_reports.py}, 7 tests)}
+
+The \code{report_data} fixture registers 3 students for Python Workshop, 2 for Old Python Talk,
+1 for Football Match and none for Hackathon, and adds an empty venue ``Empty Hall''.
+
+\begin{testcases}
+REP-01 & \tfn{test\_\allowbreak{}percent} & \code{percent(3,30)} = 10.0, \code{percent(1,3)} = 33.3, \code{percent(5,0)} = 0.0 (no division by zero). \\
+REP-02 & \tfn{test\_\allowbreak{}event\_\allowbreak{}stats} & Exactly: Workshop 3/30 = 10.0\%, Old Talk 2/40 = 5.0\%, Football 1/50 = 2.0\%, Hackathon 0/40 = 0.0\%, in that order. \\
+REP-03 & \tfn{test\_\allowbreak{}popular\_\allowbreak{}categories} & Exactly: Workshop (1 event, 3), Seminar (1, 2), Sports (1, 1), Technical (1, 0). \\
+REP-04 & \tfn{test\_\allowbreak{}venue\_\allowbreak{}utilisation} & Exactly: Seminar Hall A 4 events, 6 registrations, 160 seats, 3.8\%; Empty Hall 0, 0, 0, 0.0\% (listed even with no events). \\
+REP-05 & \tfn{test\_\allowbreak{}indexes\_\allowbreak{}do\_\allowbreak{}not\_\allowbreak{}change\_\allowbreak{}report\_\allowbreak{}numbers} & All three reports are identical before and after \code{add_indexes()}, and the three \code{idx_} indexes exist. \\
+REP-06 & \tfn{test\_\allowbreak{}reports\_\allowbreak{}page\_\allowbreak{}shows\_\allowbreak{}numbers} & Admin opens \route{/admin/reports} $\rightarrow$ 200 with ``Python Workshop'', ``10.0\%'' and ``Empty Hall''. \\
+REP-07 & \tfn{test\_\allowbreak{}student\_\allowbreak{}cannot\_\allowbreak{}open\_\allowbreak{}reports} & Student $\rightarrow$ 403. \\
+\end{testcases}
+
+% =====================================================================
+\section{Requirements traceability}
+
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.5\linewidth} X@{}}
+\toprule
+\textbf{Requirement} & \textbf{Covered by} \\
+\midrule
+\endhead
+Students can create an account; emails are unique                    & AUTH-01, AUTH-02 \\
+Passwords are stored hashed                                          & AUTH-01 \\
+Login with correct / wrong credentials                               & AUTH-03, AUTH-04 \\
+Admin pages require an admin (403 for students, login for visitors)  & AUTH-05--07, ADM-10a--g, ADM-11, REP-07 \\
+Browse upcoming events only                                          & EVT-01 \\
+Search by keyword and filter by category                             & EVT-02, EVT-03 \\
+Seats left are correct                                               & EVT-04, REG-01 \\
+Register for an event                                                & REG-01 \\
+Refuse duplicate / full / started registrations; require login       & REG-02, REG-03, REG-04, REG-08 \\
+Cancel a registration; My registrations                              & REG-05, REG-06, REG-07 \\
+Admin creates and edits events                                       & ADM-02, ADM-04 \\
+Event validation (times, capacity vs.\ venue)                        & ADM-05, ADM-06 \\
+No venue time clashes                                                & ADM-01, ADM-03, ADM-04 \\
+Deleting an event removes its registrations                          & ADM-07 \\
+Venue management; venue in use cannot be deleted                     & ADM-08, ADM-09 \\
+Participant list exported as CSV                                     & ADM-12 \\
+Reports: per-event fill rate, categories, venue utilisation          & REP-01--04, REP-06 \\
+Optimisation (rewrite + indexes) does not change any report number   & REP-02--05 \\
+Missing pages return 404                                             & EVT-05 \\
+\bottomrule
+\end{xltabular}
+
+% =====================================================================
+\section{Test results}
+\label{sec:results}
+
+\subsection{Latest run}
+
+Run on 10 November 2026 on Linux with Python 3.13, using \code{python -m pytest -v}
+(the same command \code{./scripts/test.sh} runs). Output abridged: lines for repeated tests in the same file are summarised.
+
+\begin{verbatim}
+collected 45 items
+
+tests/test_admin.py::test_find_clash PASSED                              [  2%]
+tests/test_admin.py::test_create_event PASSED                            [  4%]
+tests/test_admin.py::test_venue_clash_rejected PASSED                    [  6%]
+tests/test_admin.py::test_edit_does_not_clash_with_itself PASSED         [  8%]
+tests/test_admin.py::test_capacity_over_venue_capacity_rejected PASSED   [ 11%]
+tests/test_admin.py::test_end_before_start_rejected PASSED               [ 13%]
+tests/test_admin.py::test_delete_event_removes_its_registrations PASSED  [ 15%]
+tests/test_admin.py::test_create_venue PASSED                            [ 17%]
+tests/test_admin.py::test_venue_with_events_cannot_be_deleted PASSED     [ 20%]
+tests/test_admin.py::test_student_cannot_open_admin_pages[...] PASSED x7 [ 35%]
+tests/test_admin.py::test_student_cannot_delete_event PASSED             [ 37%]
+tests/test_admin.py::test_csv_export_returns_the_right_rows PASSED       [ 40%]
+tests/test_auth.py::... 7 PASSED                                         [ 55%]
+tests/test_events.py::... 5 PASSED                                       [ 66%]
+tests/test_registrations.py::... 8 PASSED                                [ 84%]
+tests/test_reports.py::... 7 PASSED                                      [100%]
+
+============================== 45 passed in 6.53s ==============================
+\end{verbatim}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}l r r r@{}}
+\toprule
+\textbf{File} & \textbf{Tests} & \textbf{Passed} & \textbf{Result} \\
+\midrule
+\code{test_auth.py}          & 7  & 7  & \pass \\
+\code{test_events.py}        & 5  & 5  & \pass \\
+\code{test_registrations.py} & 8  & 8  & \pass \\
+\code{test_admin.py}         & 18 & 18 & \pass \\
+\code{test_reports.py}       & 7  & 7  & \pass \\
+\midrule
+\textbf{Total}               & \textbf{45} & \textbf{45} & \pass \\
+\bottomrule
+\end{tabular}
+\caption{Results per file.}
+\end{table}
+
+\subsection{Run on the development machine}
+
+The suite was also run throughout development in Git Bash on Windows. Figure~\ref{fig:testrun}
+shows a run from the profiling phase, when the suite had 44 tests (REP-05 was added with the
+indexes).
+
+\begin{figure}[H]
+\centering
+\shot{test_run.png}{0.95\linewidth}
+\caption{\texttt{./scripts/test.sh} in the VS Code terminal: 44 passed, followed by the baseline
+profiling timings.}
+\label{fig:testrun}
+\end{figure}
+
+\subsection{History}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}l r l@{}}
+\toprule
+\textbf{Phase} & \textbf{Tests} & \textbf{Added} \\
+\midrule
+2. Auth and browsing         & 12 & fixtures, \code{test_auth.py}, \code{test_events.py} \\
+3. Registrations and admin   & 38 & \code{test_registrations.py}, \code{test_admin.py} \\
+4a. Naive reports            & 44 & \code{test_reports.py} (6 tests) \\
+4b. Optimisation             & 45 & REP-05: identical numbers with and without indexes \\
+\bottomrule
+\end{tabular}
+\caption{Growth of the test suite. Every phase ended with all tests passing.}
+\end{table}
+
+\paragraph{Defect found by testing.} The first version of ADM-01 used a window starting in the year
+2000 and expected no clash. It failed because that window genuinely overlapped the past sample event
+at the same venue: the application was right and the test was wrong. The test now uses a one-hour
+window ending exactly when the workshop starts, which also checks that touching intervals are allowed.
+
+% =====================================================================
+\section{Code coverage}
+\label{sec:coverage}
+
+Measured with \code{pytest-cov} (\code{python -m pytest --cov=app}); \code{pytest-cov} is not a project
+dependency and is only needed to repeat this measurement.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}l r r r l@{}}
+\toprule
+\textbf{Module} & \textbf{Statements} & \textbf{Missed} & \textbf{Coverage} & \\
+\midrule
+\code{app/__init__.py} & 27  & 3   & 89\%  & \rule{0.89cm}{6pt} \\
+\code{app/admin.py}    & 203 & 43  & 79\%  & \rule{0.79cm}{6pt} \\
+\code{app/auth.py}     & 81  & 9   & 89\%  & \rule{0.89cm}{6pt} \\
+\code{app/db.py}       & 52  & 13  & 75\%  & \rule{0.75cm}{6pt} \\
+\code{app/events.py}   & 98  & 11  & 89\%  & \rule{0.89cm}{6pt} \\
+\code{app/reports.py}  & 24  & 0   & 100\% & \rule{1.00cm}{6pt} \\
+\code{app/seed.py}     & 67  & 51  & 24\%  & \rule{0.24cm}{6pt} \\
+\midrule
+\textbf{Total}         & \textbf{552} & \textbf{130} & \textbf{76\%} & \\
+\bottomrule
+\end{tabular}
+\caption{Line coverage by module.}
+\end{table}
+
+The main gaps are:
+
+\begin{itemize}
+  \item \code{seed.py}: the demo-data command is exercised by \code{seed.sh} and \code{profile.sh},
+        not by pytest.
+  \item \code{db.py}: the CLI commands \code{init-db}, \code{add-indexes} and \code{create-admin}
+        (the functions behind them are tested through fixtures).
+  \item \code{admin.py}: some validation messages (missing title, category or venue, invalid times,
+        lowering capacity below registrations, venue edit rules), venue edit and the HTML participants
+        page.
+  \item \code{events.py}: cancel after start, cancel when not registered, admin trying to register,
+        and the venue/date filters through the route.
+\end{itemize}
+
+These paths are short, follow the same pattern as tested ones, and are covered by the manual
+checklist below; they are candidates for future automated tests.
+
+% =====================================================================
+\section{Manual acceptance checklist}
+\label{sec:manual}
+
+Items that need a real browser or a person's judgement. Run against \code{./scripts/setup.sh},
+\code{./scripts/seed.sh} and \code{./scripts/run.sh}; tick each item when checked.
+
+\begin{xltabular}{\linewidth}{@{}l X c@{}}
+\toprule
+\textbf{ID} & \textbf{Step and expected result} & \textbf{OK} \\
+\midrule
+\endhead
+MAN-01 & Navigation bar shows the right links for visitor, student and admin. & $\square$ \\
+MAN-02 & Search by venue and by date range returns only matching events. & $\square$ \\
+MAN-03 & Search for \code{' OR 1=1 --} returns no events and no error (SQL injection attempt). & $\square$ \\
+MAN-04 & An event description containing \texttt{<b>bold</b>} is shown as text, not bold (HTML escaping). & $\square$ \\
+MAN-05 & Delete buttons ask for confirmation; choosing \emph{Cancel} deletes nothing. & $\square$ \\
+MAN-06 & Edit an event and lower its capacity below the number registered: refused with a clear message. & $\square$ \\
+MAN-07 & A downloaded participants CSV opens correctly in Excel/LibreOffice, including names with commas. & $\square$ \\
+MAN-08 & Reports page fill-rate bars match the percentages. & $\square$ \\
+MAN-09 & At phone width (DevTools, 375\,px) cards stack and wide tables scroll sideways. & $\square$ \\
+MAN-10 & Opening \route{/admin/} in a private window redirects to the login page. & $\square$ \\
+MAN-11 & \code{./scripts/seed.sh abc} prints an error and changes nothing. & $\square$ \\
+MAN-12 & \code{./scripts/profile.sh after} completes and writes the four result files. & $\square$ \\
+\bottomrule
+\end{xltabular}
+
+% =====================================================================
+\section{Known limitations and future tests}
+
+\begin{itemize}
+  \item \textbf{Concurrency.} Two simultaneous registrations for the last seat are not tested (the
+        check and insert are separate statements). A future test could run two registrations in
+        threads after the registration is made atomic.
+  \item \textbf{Time-dependent data.} Fixtures place events relative to \emph{now}, so tests are
+        stable on any date, but a run crossing midnight in the exact second an event starts is
+        theoretically possible.
+  \item \textbf{Browser tests.} No end-to-end browser automation (e.g.\ Playwright); layout is
+        checked manually.
+  \item \textbf{Performance} is not asserted in tests; it is measured with \code{profile.sh} and
+        recorded in \code{profiling/RESULTS.md}.
+\end{itemize}
+
+\end{document}

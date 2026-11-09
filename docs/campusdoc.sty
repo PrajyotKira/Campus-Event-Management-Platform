@@ -1,0 +1,146 @@
+% =====================================================================
+%  campusdoc.sty: shared look for every document in docs/
+%  (user manual, installation guide, developer guide, test report).
+%  Each document loads it with \usepackage{campusdoc}.
+% =====================================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{campusdoc}[2026/11/10 Campus Event Management Platform documentation style]
+
+% ---------- Fonts and page ----------
+\RequirePackage[T1]{fontenc}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage{lmodern}
+\RequirePackage{microtype}
+\RequirePackage[a4paper,margin=2.4cm,headheight=14pt]{geometry}
+
+% ---------- General packages ----------
+\RequirePackage{graphicx}
+\RequirePackage{amssymb}     % \checkmark
+\RequirePackage{booktabs}
+\RequirePackage{array}
+\RequirePackage{tabularx}
+\RequirePackage{xltabular}    % tables that can break across pages
+\RequirePackage{float}
+\RequirePackage{caption}
+\RequirePackage{enumitem}
+\RequirePackage{xcolor}
+\RequirePackage{listings}
+\RequirePackage{upquote}
+\RequirePackage{fancyhdr}
+\RequirePackage{lastpage}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,shapes.geometric}
+\RequirePackage{hyperref}     % load last
+
+% Screenshots are shared with the project report.
+\graphicspath{{../report/figures/}}
+
+% ---------- Colours (same blue as app/static/style.css) ----------
+\definecolor{primary}{HTML}{1D4ED8}
+\definecolor{primarydark}{HTML}{1E3A8A}
+\definecolor{muted}{HTML}{6B7280}
+\definecolor{codebg}{RGB}{246,248,250}
+\definecolor{okgreen}{HTML}{15803D}
+\definecolor{errred}{HTML}{B91C1C}
+
+\hypersetup{colorlinks=true, linkcolor=primarydark, urlcolor=primarydark,
+            citecolor=primarydark, pdfauthor={Prajyot}}
+
+% ---------- Helper commands ----------
+% \code{...}: inline code. \detokenize lets us write _ directly (never put % inside).
+\DeclareRobustCommand{\code}[1]{\texttt{\detokenize{#1}}}
+% \path{...}-like file names, \url-like routes
+\newcommand{\route}[1]{\texttt{\detokenize{#1}}}
+% Keyboard keys and on-screen buttons
+\newcommand{\kbd}[1]{\tcbox[on line, boxsep=0pt, left=3pt, right=3pt, top=1pt, bottom=1pt,
+  colback=black!4, colframe=black!35, boxrule=0.4pt, arc=2pt]{\footnotesize\ttfamily #1}}
+\newcommand{\button}[1]{\tcbox[on line, boxsep=0pt, left=4pt, right=4pt, top=1.5pt, bottom=1.5pt,
+  colback=primary, colframe=primary, arc=3pt]{\footnotesize\sffamily\color{white}#1}}
+\newcommand{\menu}[1]{\textsf{\textbf{#1}}}
+\setlength{\emergencystretch}{3em}
+
+% Coloured boxes for notes, tips and warnings.
+\newtcolorbox{note}[1][Note]{colback=primary!4, colframe=primary!70, boxrule=0.6pt,
+  arc=2pt, left=6pt, right=6pt, fonttitle=\bfseries\small, title=#1, breakable}
+\newtcolorbox{tip}[1][Tip]{colback=okgreen!4, colframe=okgreen!70, boxrule=0.6pt,
+  arc=2pt, left=6pt, right=6pt, fonttitle=\bfseries\small, title=#1, breakable}
+\newtcolorbox{warning}[1][Warning]{colback=errred!4, colframe=errred!70, boxrule=0.6pt,
+  arc=2pt, left=6pt, right=6pt, fonttitle=\bfseries\small, title=#1, breakable}
+
+% A screenshot with a thin border. Shows a placeholder box if the file is missing,
+% so the build never fails.  \shot{file}{width}
+\newcommand{\shot}[2]{%
+  \IfFileExists{../report/figures/#1}{\fbox{\includegraphics[width=#2]{#1}}}{%
+    \fbox{\parbox[c][3cm][c]{0.8\linewidth}{\centering\small Screenshot missing:\\
+      \nolinkurl{report/figures/#1}}}}}
+
+% Smaller font for verbatim blocks (terminal output).
+\makeatletter
+\renewcommand{\verbatim@font}{\footnotesize\ttfamily}
+\makeatother
+
+% ---------- Code listings ----------
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  frame=single, rulecolor=\color{black!20},
+  breaklines=true, columns=fullflexible, keepspaces=true,
+  showstringspaces=false, tabsize=4, captionpos=b, upquote=true,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!40!black}\itshape,
+  stringstyle=\color{red!60!black},
+}
+% A plain style for shell sessions.
+\lstdefinestyle{shell}{language=bash, keywordstyle=\color{black}, commentstyle=\color{muted}\itshape}
+
+% ---------- Lists ----------
+\setlist{itemsep=2pt, topsep=4pt}
+
+% ---------- Headers and footers ----------
+\newcommand{\cempdoctitle}{}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{muted}Campus Event Management Platform}
+\fancyhead[R]{\small\color{muted}\cempdoctitle}
+\fancyfoot[C]{\small\color{muted}Page \thepage\ of \pageref*{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}%
+  \fancyfoot[C]{\small\color{muted}Page \thepage\ of \pageref*{LastPage}}}
+
+% ---------- Title page ----------
+% \makedoctitle{Document title}{Subtitle}{Document number, e.g. CEMP-UM}
+\newcommand{\makedoctitle}[3]{%
+  \renewcommand{\cempdoctitle}{#1}%
+  \hypersetup{pdftitle={Campus Event Management Platform: #1}}%
+  \begin{titlepage}\raggedright\noindent
+    \begin{tikzpicture}[remember picture, overlay]
+      \fill[primary] (current page.north west) rectangle ([yshift=-5.2cm]current page.north east);
+      \node[anchor=west, text=white, font=\Large\sffamily\bfseries]
+        at ([xshift=2.4cm, yshift=-2.1cm]current page.north west) {Campus Event Management Platform};
+      \node[anchor=west, text=white!80!primary, font=\large\sffamily]
+        at ([xshift=2.4cm, yshift=-3.0cm]current page.north west) {CS 202C course project \textbullet\ IIT Dharwad};
+    \end{tikzpicture}\par
+    \vspace*{5.5cm}
+    {\fontsize{30}{36}\selectfont\bfseries\sffamily #1\par}
+    \vspace{0.5cm}
+    {\Large\color{muted}#2\par}
+    \vspace{1.2cm}
+    {\color{primary}\rule{\linewidth}{1.2pt}}
+    \vspace{0.6cm}
+
+    \begin{tabular}{@{}ll@{}}
+      \textbf{Author}   & Prajyot (MC25B012) \\
+      \textbf{Course}   & CS 202C, Indian Institute of Technology Dharwad \\
+      \textbf{Document} & #3 \\
+      \textbf{Version}  & 1.0, November 2026 \\
+      \textbf{Software} & Flask + SQLite web application (Python 3.10+) \\
+    \end{tabular}
+    \vfill
+    {\small\color{muted}Part of the project documentation set:
+      Project Report \textbullet\ Presentation Slides \textbullet\ User Manual \textbullet\
+      Installation \& Operations Guide \textbullet\ Developer Guide \textbullet\ Test Plan \& Report.
+      Source: \texttt{docs/} and \texttt{report/} in the project repository.\par}
+  \end{titlepage}}
+
+\endinput
