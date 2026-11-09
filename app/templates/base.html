@@ -19,6 +19,8 @@
                 {% if current_user.is_authenticated %}
                     {% if current_user.is_admin %}
                         <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+                    {% else %}
+                        <a href="{{ url_for('events.my_registrations') }}">My registrations</a>
                     {% endif %}
                     <span class="nav-user">Hi, {{ current_user.name }}</span>
                     <a href="{{ url_for('auth.logout') }}">Logout</a>

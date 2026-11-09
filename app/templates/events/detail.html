@@ -25,6 +25,30 @@
 
     {# Jinja escapes the text automatically, so HTML in a description can't run #}
     <p>{{ event.description or "No description." }}</p>
-    {# The Register / Cancel button is added in phase 3 #}
+
+    {# What the bottom of the card shows depends on who is looking #}
+    <div class="detail-actions">
+    {% if not current_user.is_authenticated %}
+        <p><a href="{{ url_for('auth.login') }}">Log in</a> to register for this event.</p>
+    {% elif current_user.is_admin %}
+        <p class="muted">Admins manage events from the Admin dashboard.</p>
+    {% elif is_registered %}
+        <p class="seats">You are registered for this event.</p>
+        {% if not has_started %}
+        {# POST, not a link: changing data should never happen on a plain GET #}
+        <form method="post" action="{{ url_for('events.cancel_registration', event_id=event.id) }}">
+            <button type="submit" class="button button-danger">Cancel registration</button>
+        </form>
+        {% endif %}
+    {% elif has_started %}
+        <p class="muted">This event has already started.</p>
+    {% elif event.seats_left <= 0 %}
+        <p class="seats seats-full">This event is full.</p>
+    {% else %}
+        <form method="post" action="{{ url_for('events.register_for_event', event_id=event.id) }}">
+            <button type="submit" class="button">Register</button>
+        </form>
+    {% endif %}
+    </div>
 </article>
 {% endblock %}

@@ -193,7 +193,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
     width: 100%;
     padding: 0.5rem;
     border: 1px solid var(--border);
@@ -297,4 +298,90 @@ select {
 
 .details dd {
     margin: 0;
+}
+
+/* ---------- Extra button styles ---------- */
+.button-small {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.9rem;
+}
+
+.button-danger {
+    background: var(--error);
+}
+
+.button-danger:hover {
+    background: #7f1d1d;
+}
+
+/* Lets a small POST form (e.g. a Delete button) sit on the same line as links */
+.inline-form {
+    display: inline;
+}
+
+.detail-actions {
+    margin-top: 1.5rem;
+}
+
+/* ---------- Tables (admin pages, my registrations) ---------- */
+/* The wrapper scrolls sideways on narrow screens instead of breaking the layout */
+.table-wrap {
+    overflow-x: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;   /* single lines between cells */
+}
+
+.table th,
+.table td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.table th {
+    background: var(--bg);
+    font-size: 0.9rem;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+.actions a,
+.actions form {
+    margin-right: 0.5rem;
+}
+
+/* Title row with a button on the right, e.g. "Venues   [+ New venue]" */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Wider form card for the event form */
+.form-wide {
+    max-width: 640px;
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Admin dashboard links */
+.admin-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
 }
