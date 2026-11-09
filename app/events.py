@@ -49,10 +49,11 @@ def is_registered(user_id, event_id):
     return row is not None
 
 
-def search_events(keyword="", category="", venue_id=None, date_from="", date_to=""):
-    """Return upcoming events matching the given filters (empty filter = ignored).
+def build_search_sql(keyword="", category="", venue_id=None, date_from="", date_to=""):
+    """Build the search query for the given filters (an empty filter is ignored).
 
-    This is a plain function (not a route) so it can be tested and profiled directly.
+    Returns (sql, params). Kept separate from running it so profiling/explain.py
+    can show the query plan of exactly the same SQL.
     """
     # Build the WHERE clause piece by piece.
     # `conditions` only ever holds fixed SQL text written by us; every value the
@@ -92,6 +93,15 @@ def search_events(keyword="", category="", venue_id=None, date_from="", date_to=
         "GROUP BY e.id "
         "ORDER BY e.start_time"
     )
+    return sql, params
+
+
+def search_events(keyword="", category="", venue_id=None, date_from="", date_to=""):
+    """Return upcoming events matching the given filters.
+
+    A plain function (not a route) so it can be tested and profiled directly.
+    """
+    sql, params = build_search_sql(keyword, category, venue_id, date_from, date_to)
     return get_db().execute(sql, params).fetchall()
 
 
