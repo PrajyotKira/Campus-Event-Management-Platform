@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }} | Campus Events{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('events.list_events') }}">&larr; Back to events</a></p>
+
+<article class="card detail-card">
+    <span class="badge">{{ event.category }}</span>
+    <h1>{{ event.title }}</h1>
+
+    <dl class="details">
+        <dt>When</dt>
+        <dd>{{ event.start_time }} to {{ event.end_time }}</dd>
+
+        <dt>Where</dt>
+        <dd>{{ event.venue_name }} ({{ event.venue_location }})</dd>
+
+        <dt>Organiser</dt>
+        <dd>{{ event.organiser }}</dd>
+
+        <dt>Seats</dt>
+        <dd>{{ event.seats_left }} of {{ event.capacity }} left</dd>
+    </dl>
+
+    {# Jinja escapes the text automatically, so HTML in a description can't run #}
+    <p>{{ event.description or "No description." }}</p>
+    {# The Register / Cancel button is added in phase 3 #}
+</article>
+{% endblock %}

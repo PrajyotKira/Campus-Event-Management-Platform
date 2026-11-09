@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Events | Campus Events{% endblock %}
+
+{% block content %}
+<h1>Upcoming events</h1>
+
+{# method="get" puts the filters in the URL, so a search can be bookmarked or shared #}
+<form method="get" class="filters">
+    <div class="filter-field filter-wide">
+        <label for="q">Keyword</label>
+        <input type="text" id="q" name="q" placeholder="Search title or description"
+               value="{{ filters.q }}">
+    </div>
+
+    <div class="filter-field">
+        <label for="category">Category</label>
+        <select id="category" name="category">
+            <option value="">All categories</option>
+            {% for c in categories %}
+                <option value="{{ c }}" {% if c == filters.category %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filter-field">
+        <label for="venue_id">Venue</label>
+        <select id="venue_id" name="venue_id">
+            <option value="">All venues</option>
+            {% for v in venues %}
+                <option value="{{ v.id }}" {% if v.id == filters.venue_id %}selected{% endif %}>{{ v.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filter-field">
+        <label for="date_from">From</label>
+        <input type="date" id="date_from" name="date_from" value="{{ filters.date_from }}">
+    </div>
+
+    <div class="filter-field">
+        <label for="date_to">To</label>
+        <input type="date" id="date_to" name="date_to" value="{{ filters.date_to }}">
+    </div>
+
+    <div class="filter-actions">
+        <button type="submit" class="button">Search</button>
+        <a href="{{ url_for('events.list_events') }}" class="button button-secondary">Clear</a>
+    </div>
+</form>
+
+<p class="muted">{{ events|length }} event(s) found</p>
+
+{% if events %}
+<div class="event-grid">
+    {% for e in events %}
+    <article class="card event-card">
+        <span class="badge">{{ e.category }}</span>
+        <h2><a href="{{ url_for('events.event_detail', event_id=e.id) }}">{{ e.title }}</a></h2>
+        <p class="muted">{{ e.start_time }} to {{ e.end_time[11:] }}</p>
+        <p>{{ e.venue_name }}</p>
+        {% if e.seats_left > 0 %}
+            <p class="seats">{{ e.seats_left }} seats left</p>
+        {% else %}
+            <p class="seats seats-full">Full</p>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<p>No events match your search.</p>
+{% endif %}
+{% endblock %}
