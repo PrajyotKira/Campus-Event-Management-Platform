@@ -323,33 +323,6 @@ feat: add admin reports page (naive N+1 version)
 
 % ---------------------------------------------------------------------
 % 10
-\begin{frame}{AI usage}
-  \begin{columns}[T]
-    \begin{column}{0.48\textwidth}
-      \textbf{Claude Code (AI assistant) did}
-      \begin{itemize}\small
-        \item Generated most code, scripts, tests and doc drafts from my phase-by-phase instructions
-        \item Explained every file so I could present it
-        \item Found issues while testing: \code{flask.exe} blocked on Windows, a Jinja comment bug
-        \item Pointed out a redundant \code{user_id} index
-      \end{itemize}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \textbf{I did}
-      \begin{itemize}\small
-        \item Set requirements, schema rules and the order of work
-        \item Ran every script and test myself, tried features in the browser
-        \item Profiled with SnakeViz and took all screenshots
-        \item Read each change and made every git commit myself
-      \end{itemize}
-      \vspace{4pt}
-      \small Full dated log: \code{AI_USAGE.md}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-% ---------------------------------------------------------------------
-% 11
 \begin{frame}{Live demo}
   \begin{enumerate}
     \item \code{./scripts/setup.sh} then \code{./scripts/seed.sh}, then \code{./scripts/run.sh}
@@ -365,13 +338,14 @@ feat: add admin reports page (naive N+1 version)
 \end{frame}
 
 % ---------------------------------------------------------------------
-% 12
+% 11
 \begin{frame}
   \centering
   \vspace{1cm}
   {\Huge Thank you!}\\[0.8cm]
   {\Large Questions?}\\[1cm]
-  \small Code, tests, profiling results: \code{README.md} $\cdot$ \code{profiling/RESULTS.md}
+  \small Code, tests, profiling results: \code{README.md} $\cdot$ \code{profiling/RESULTS.md}\\[4pt]
+  \footnotesize AI assistance declared --- see report Section 10 and \code{AI_USAGE.md}.
 \end{frame}
 
 \end{document}

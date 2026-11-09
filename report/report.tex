@@ -872,35 +872,34 @@ tests pass. Commit messages follow the Conventional Commits style:
 
 Two habits made the history useful. First, the naive reports and their baseline measurements were
 committed \emph{before} the optimisation, so the history itself proves what was measured and when.
-Second, \code{.gitignore} keeps generated files (the virtual environment, \code{*.db},
+Second, \code{.gitignore} keeps build and environment files (the virtual environment, \code{*.db},
 \code{__pycache__}, LaTeX build files) out of the repository, and \code{.gitattributes} forces
 \code{.sh} files to use Unix line endings, so a Windows checkout cannot break the Bash scripts with
 \verb|$'\r': command not found|.
 
 % =====================================================================
 \section{AI usage declaration}
+\label{sec:ai}
 
-I used \textbf{Claude Code} (Anthropic's AI coding assistant, running in VS Code) throughout this
-project. In the interest of honesty:
+I used Claude, an AI assistant made by Anthropic (through the Claude Code extension in VS Code),
+during this project.
 
-\paragraph{What the AI did.} From my phase-by-phase instructions (the features, the database
-schema, the rule of raw SQL and no ORM, the scripts I wanted and the request to start with a naive
-version and profile it), the AI generated most of the code, the Bash scripts, the tests, the
-profiling scripts and first drafts of the README, this report and the slides. After each phase it
-explained every new file in plain language so I could understand and present it, and it suggested
-small, separate commits. It also found and fixed problems while testing its own work (the Windows
-\code{flask.exe} issue and the Jinja comment bug below), and pointed out that a
-\code{registrations(user_id)} index would duplicate an existing one.
+\paragraph{What it was used for.} Drafting much of the application code, Bash scripts, tests and
+documentation from my specifications (the features, the database schema, raw SQL without an ORM,
+and a naive first version of the reports to be profiled and then optimised); explaining concepts and
+code, such as Flask Blueprints, cProfile output, query plans and indexes; and helping diagnose
+problems and suggest improvements, including the Windows \code{flask.exe} launcher issue, the Jinja
+comment bug and the redundant \code{registrations(user_id)} index.
 
-\paragraph{What I did.} I set the requirements and the order of work, ran every script and the
-test suite on my own machine in Git Bash, tried the features in the browser, opened the profiles in
-SnakeViz, took all screenshots, and made every git commit myself after reading the changes.
-\todo{Describe concretely what you checked, questioned or changed yourself, e.g. code you
-modified, a bug you found, a decision you made differently, the user\_id index decision. Keep this
-consistent with AI\_USAGE.md.}
+\paragraph{What I did.} I defined the requirements and the order of work. I ran every script and the
+full test suite myself in Git Bash on Windows and tested the features in the browser. I reviewed all
+of the code and every suggestion before accepting it, including the decision to leave out the
+redundant index. I ran the profiling, took the screenshots and made every git commit myself.
+A phase-by-phase log is in \code{AI_USAGE.md} in the repository.
 
-A dated, phase-by-phase log of what the AI did and what I verified is in \code{AI_USAGE.md} in
-the repository.
+\paragraph{In my own words.}
+\todo{Write 3--5 sentences yourself: what you learned, what you checked or changed by hand, and
+anything you did differently from the suggestions. Keep it consistent with AI\_USAGE.md.}
 
 % =====================================================================
 \section{Challenges}
