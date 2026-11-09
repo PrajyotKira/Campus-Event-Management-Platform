@@ -41,11 +41,35 @@ def init_db():
         conn.executescript(f.read())
 
 
+def add_indexes():
+    """Create the performance indexes by running sql/indexes.sql.
+
+    Kept separate from init_db so profiling can measure with and without them.
+    """
+    conn = get_db()
+    indexes_path = os.path.join(current_app.root_path, "..", "sql", "indexes.sql")
+    with open(indexes_path, encoding="utf-8") as f:
+        conn.executescript(f.read())
+
+
 @click.command("init-db")
 def init_db_command():
     """CLI command: flask --app app init-db"""
     init_db()
     click.echo("    Database created at " + current_app.config["DATABASE"])
+
+
+@click.command("add-indexes")
+def add_indexes_command():
+    """CLI command: flask --app app add-indexes"""
+    add_indexes()
+    names = [
+        row["name"] for row in get_db().execute(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_%' "
+            "ORDER BY name"
+        )
+    ]
+    click.echo("    Indexes: " + ", ".join(names))
 
 
 @click.command("create-admin")
@@ -76,4 +100,5 @@ def init_app(app):
     """Connect the helpers above to the Flask app (called from create_app)."""
     app.teardown_appcontext(close_db)          # close the DB after every request
     app.cli.add_command(init_db_command)       # adds "flask init-db"
+    app.cli.add_command(add_indexes_command)   # adds "flask add-indexes"
     app.cli.add_command(create_admin_command)  # adds "flask create-admin"

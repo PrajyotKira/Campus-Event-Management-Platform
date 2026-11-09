@@ -4,7 +4,7 @@ import pytest
 from werkzeug.security import generate_password_hash
 
 from app import reports
-from app.db import get_db
+from app.db import add_indexes, get_db
 
 
 @pytest.fixture
@@ -77,6 +77,23 @@ def test_venue_utilisation(app, report_data):
         ("Seminar Hall A", 4, 6, 160, 3.8),   # 6 of 30+50+40+40 seats
         ("Empty Hall", 0, 0, 0, 0.0),         # venues with no events are still listed
     ]
+
+
+def test_indexes_do_not_change_report_numbers(app, report_data):
+    """Indexes only change HOW SQLite finds rows, never the answers."""
+    with app.app_context():
+        without_indexes = (reports.event_stats(), reports.popular_categories(),
+                           reports.venue_utilisation())
+        add_indexes()
+        names = {row["name"] for row in get_db().execute(
+            "SELECT name FROM sqlite_master WHERE type = 'index'"
+        )}
+        with_indexes = (reports.event_stats(), reports.popular_categories(),
+                        reports.venue_utilisation())
+
+    assert {"idx_registrations_event", "idx_events_venue_start",
+            "idx_events_category"} <= names  # <= on sets means "is a subset of"
+    assert with_indexes == without_indexes
 
 
 def test_reports_page_shows_numbers(admin_client, report_data):
