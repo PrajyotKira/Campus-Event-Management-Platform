@@ -1,0 +1,34 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# SQLite database files (recreated by scripts/setup.sh)
+*.db
+instance/
+
+# Secrets / local settings
+.env
+
+# LaTeX build files (keep only .tex sources and final PDFs)
+*.aux
+*.log
+*.out
+*.toc
+*.nav
+*.snm
+*.vrb
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+
+# Editor / OS clutter
+.vscode/
+.DS_Store
+Thumbs.db
