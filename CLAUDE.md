@@ -97,4 +97,19 @@ Gotcha: Jinja parses `{% %}` even inside HTML `<!-- -->` comments, so use `{# #}
       in setup.sh and profile.sh; profiling/explain.py; results in profiling/after/,
       profiling/rewrite_only/ and profiling/RESULTS.md (total 10,916 ms -> 32.6 ms, ~335x;
       SQL calls 6016 -> 6). 45 tests.
-- [ ] Phase 5: README, LaTeX report, Beamer slides
+- [x] Phase 5: README.md, report/report.tex (article), report/slides.tex (Beamer Madrid,
+      16:9, 12 slides), scripts/build_docs.sh (latexmk -> pdflatex x2 -> Overleaf message).
+      LaTeX was NOT installed when written, so the .tex files were only statically checked,
+      never compiled: compile on Overleaf / MiKTeX and fix any errors.
+
+## Docs notes
+- report/figures/ file names do NOT match their content: events_search.png and
+  admin_events.png show the Reports page; reports_page.png is the VS Code terminal
+  (test.sh 44 passed + baseline timings); before_snakeviz.png / snakeviz.png /
+  snakeviz1.png are the BEFORE profile; event_detail, my_registrations, clash_error,
+  reports_final are more rows of the reports table (unused).
+- report.tex uses \screenshot{file}{width}{hint}: shows a placeholder box until these
+  exist: figures/search_page.png, detail_page.png, my_registrations_page.png,
+  clash_error_page.png, after_snakeviz.png.
+- \code{} uses \detokenize: write underscores plainly inside it (no \_), never put % in it.
+- report.tex has red \todo{} markers (roll number, AI usage "what I did") for the student.

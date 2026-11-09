@@ -27,6 +27,9 @@ instance/
 *.synctex.gz
 *.bbl
 *.blg
+*.lof
+*.lot
+*.xdv
 
 # Editor / OS clutter
 .vscode/
