@@ -149,11 +149,7 @@ SnakeViz view of the profile *before* optimisation: almost all time is in `count
 
 ![SnakeViz before](report/figures/before_snakeviz.png)
 
-## AI usage declaration
-
-This project was built with help from **Claude Code** (Anthropic's AI coding assistant). It generated most of the code, scripts, tests and documentation drafts from my phase-by-phase instructions, and explained each file so I could understand it.
-I ran every script and test myself, reviewed the code, made all git commits myself and took the screenshots.
-A dated log of what the AI did and what I checked or changed is in [**AI_USAGE.md**](AI_USAGE.md).
+**AI usage:** AI assistance (Claude) was used in this project and is declared in [AI_USAGE.md](AI_USAGE.md).
 
 ## Author
 

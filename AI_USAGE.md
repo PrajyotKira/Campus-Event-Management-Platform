@@ -1,12 +1,14 @@
-# AI Usage Log
+# AI Usage
 
-A record of where AI tools helped in this project, and what I checked or changed myself.
+**Tool:** Claude (Anthropic), used through the Claude Code extension in VS Code, November 2026.
 
-| Date | Tool | What AI did | What I changed/verified |
-|------|------|-------------|-------------------------|
-| 2026-11-09 | Claude Code | Phase 1 scaffold: folder structure, `sql/schema.sql`, `scripts/setup.sh`, `scripts/run.sh`, `scripts/common.sh`, Flask app factory, `db.py`, base template and CSS, CLAUDE.md | _(fill in: e.g. ran setup.sh and run.sh in Git Bash, read through the schema, changed ...)_ |
-| 2026-11-09 | Claude Code | Phase 2: `auth.py` (register/login/logout, `admin_required`), `events.py` (list with safe search filters, detail page), placeholder `admin.py`, `seed.py` + `seed.sh`, pytest fixtures and 12 tests, `test.sh`, templates and CSS | _(fill in: e.g. ran test.sh, tried logging in as student and admin, read the WHERE-clause builder, changed ...)_ |
-| 2026-11-09 | Claude Code | Phase 3: register/cancel routes and My registrations page; admin dashboard, venue and event CRUD with validation and `find_clash()`; participants page and CSV export; 26 new tests (registrations, clashes, capacity, access control, CSV) | _(fill in: e.g. ran test.sh, created/edited/deleted an event in the browser, tried a clashing booking, opened the CSV in Excel, changed ...)_ |
-| 2026-11-09 | Claude Code | Phase 4 Part A: naive (N+1) report functions in `app/reports.py` and the reports page, report tests, `search_events()` extracted for profiling, `profiling/run_profile.py` and `scripts/profile.sh`, baseline profile in `profiling/before/` | _(fill in: e.g. ran profile.sh before, opened profile.prof in snakeviz, checked the report numbers by hand, changed ...)_ |
-| 2026-11-09 | Claude Code | Phase 4 Part B: rewrote the reports as single JOIN + GROUP BY queries, `sql/indexes.sql` + `flask add-indexes` (setup.sh/profile.sh), `profiling/explain.py` (EXPLAIN QUERY PLAN), after + rewrite-only profiles, `profiling/RESULTS.md`; pointed out that a `registrations(user_id)` index would duplicate the UNIQUE constraint's index | _(fill in: e.g. reran profile.sh after, compared query plans, checked RESULTS.md numbers against timings.txt, decided about the user_id index, changed ...)_ |
-| 2026-11-09 | Claude Code | Phase 5: README.md, LaTeX report (`report/report.tex`, TikZ architecture and ER diagrams, pgfplots chart) and Beamer slides (`report/slides.tex`), `scripts/build_docs.sh`; checked the screenshots and found that most file names don't match their content | _(fill in: e.g. compiled on Overleaf, fixed ..., took the missing screenshots, filled in the red TODOs, rewrote the AI usage section in my own words, changed ...)_ |
+Throughout the project, Claude drafted code, scripts, tests and documentation from my specifications and explained the code and concepts to me. I ran, tested and reviewed everything, and made every git commit myself.
+
+| Phase | AI assistance | What I verified/changed |
+|---|---|---|
+| 1. Skeleton | Drafted folder structure, `sql/schema.sql`, `setup.sh`/`run.sh`/`common.sh`, app factory, `db.py`, base template and CSS; diagnosed the Windows `flask.exe` launcher issue (switched to `python -m flask`) and a Jinja comment bug | _(to fill in)_ |
+| 2. Auth and browsing | Drafted login/register/logout and `admin_required`, event search and detail pages, Faker seed command and `seed.sh`, first 12 tests and `test.sh` | _(to fill in)_ |
+| 3. Registrations and admin | Drafted register/cancel and My registrations, admin CRUD with validation and the venue clash check, participants page and CSV export, 26 tests | _(to fill in)_ |
+| 4a. Naive reports and baseline | Drafted the naive (N+1) reports page and report tests, `profiling/run_profile.py` and `profile.sh` | _(to fill in)_ |
+| 4b. Optimisation | Drafted the JOIN + GROUP BY rewrite, `sql/indexes.sql`, `profiling/explain.py` and `profiling/RESULTS.md`; suggested leaving out the redundant `registrations(user_id)` index | _(to fill in)_ |
+| 5. Documentation | Drafted README, LaTeX report, Beamer slides and `build_docs.sh`; pointed out screenshots whose file names did not match their content | _(to fill in)_ |
