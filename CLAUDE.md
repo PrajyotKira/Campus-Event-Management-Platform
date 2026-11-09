@@ -57,6 +57,12 @@ Times are stored as TEXT 'YYYY-MM-DD HH:MM'. `CATEGORIES` list lives in `app/eve
 Demo logins after `./scripts/setup.sh && ./scripts/seed.sh`:
 admin `admin@campus.local` / `admin123`, students `student1..100@campus.local` / `student123`.
 
+Profiling: `./scripts/profile.sh <label> [events=2000]` (RUNS env var, default 3) builds a
+separate DB `profiling/profile.db` via the `CAMPUS_DB` env var (read in create_app), seeds it,
+then runs `python -m profiling.run_profile <label> <runs>`. Output in profiling/<label>/:
+profile.prof (view with `snakeviz`), profile_stats.txt (top 20 cumulative), timings.txt.
+`search_events()` in events.py is a plain function so it can be profiled.
+
 Tests: `pytest.ini` sets `pythonpath = .`; fixtures in `tests/conftest.py`
 (`app` on a tmp_path DB, `client`, `auth`, `admin_user`, `sample_events` -> {title: id},
 `student_client`, `admin_client`). Test files: test_auth, test_events,
@@ -77,6 +83,12 @@ Gotcha: Jinja parses `{% %}` even inside HTML `<!-- -->` comments, so use `{# #}
 - [x] Phase 3: student register/cancel (full / started / duplicate checks) + My registrations;
       admin dashboard counts, venues & events CRUD, clash check, participants + CSV export;
       tests for all of it
-- [ ] Phase 4: admin reports page (registrations per event, fill rate %, popular categories,
-      venue utilisation) + profiling (cProfile, profile.sh) + indexes, before/after
+- [x] Phase 4 Part A: /admin/reports using app/reports.py, written NAIVELY on purpose
+      (N+1: one COUNT query per event); test_reports.py; profile.sh + profiling/run_profile.py;
+      baseline saved in profiling/before/ (2000 events, 67,423 registrations:
+      each report ~2000 SQL calls, ~3.5 s; search ~60 ms for 3 searches)
+- [ ] Phase 4 Part B (wait for the student to say "continue"): JOIN + GROUP BY rewrites of
+      reports.py (keep `percent()` in Python so numbers can't change), sql/indexes.sql applied
+      by setup.sh and profile.sh, EXPLAIN QUERY PLAN before/after, ./scripts/profile.sh after,
+      profiling/RESULTS.md
 - [ ] Phase 5: README, LaTeX report, Beamer slides

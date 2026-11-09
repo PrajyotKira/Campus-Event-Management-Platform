@@ -1,0 +1,12 @@
+Profile: before   (2026-11-09 21:56)
+Data: 2000 events, 67423 registrations, 10 venues
+Each workload was timed 3 times without the profiler.
+
+Workload                      SQL calls  Fastest (ms)  Average (ms)
+-------------------------------------------------------------------
+event_stats                        2001        3512.4        3597.5
+popular_categories                 2001        3493.8        3502.5
+venue_utilisation                  2011        3743.9        3752.9
+search_events (3 searches)            3          61.2          63.1
+-------------------------------------------------------------------
+Total (average)                                             10916.1
