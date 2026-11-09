@@ -1,0 +1,12 @@
+{# Shared page for errors like 403 (forbidden) and 404 (not found) #}
+{% extends "base.html" %}
+
+{% block title %}Error {{ code }} | Campus Events{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>Error {{ code }}</h1>
+    <p>{{ message }}</p>
+    <a class="button" href="{{ url_for('index') }}">Go to the homepage</a>
+</section>
+{% endblock %}

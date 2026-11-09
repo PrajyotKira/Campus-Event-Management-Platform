@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Register | Campus Events{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h1>Create a student account</h1>
+    {# method="post" sends the form data in the request body, not the URL #}
+    <form method="post">
+        <label for="name">Full name</label>
+        {# request.form.get(...) refills the field if the form had an error #}
+        <input type="text" id="name" name="name" required
+               value="{{ request.form.get('name', '') }}">
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required
+               value="{{ request.form.get('email', '') }}">
+
+        <label for="password">Password (at least 6 characters)</label>
+        <input type="password" id="password" name="password" required minlength="6">
+
+        <button type="submit" class="button">Register</button>
+    </form>
+    <p class="muted">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+</div>
+{% endblock %}

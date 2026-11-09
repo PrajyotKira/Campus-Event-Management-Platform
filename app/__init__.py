@@ -8,7 +8,7 @@ import os
 
 from flask import Flask, render_template
 
-from . import db
+from . import admin, auth, db, events, seed
 
 
 def create_app(test_config=None):
@@ -31,6 +31,16 @@ def create_app(test_config=None):
 
     # Register database helpers and the init-db / create-admin commands.
     db.init_app(app)
+    # Add the "flask seed" command.
+    app.cli.add_command(seed.seed_command)
+
+    # Flask-Login: keeps track of the logged-in user.
+    auth.login_manager.init_app(app)
+
+    # Blueprints: each one is a group of related routes in its own file.
+    app.register_blueprint(auth.bp)
+    app.register_blueprint(events.bp)
+    app.register_blueprint(admin.bp)
 
     @app.route("/")
     def index():
@@ -44,5 +54,18 @@ def create_app(test_config=None):
             ).fetchone()[0],
         }
         return render_template("index.html", stats=stats)
+
+    # Friendly error pages instead of Flask's plain default ones.
+    @app.errorhandler(403)
+    def forbidden(error):
+        return render_template(
+            "error.html", code=403, message="You are not allowed to view this page."
+        ), 403
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return render_template(
+            "error.html", code=404, message="That page does not exist."
+        ), 404
 
     return app

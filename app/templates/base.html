@@ -14,7 +14,18 @@
             <a class="logo" href="{{ url_for('index') }}">Campus Events</a>
             <nav class="nav">
                 <a href="{{ url_for('index') }}">Home</a>
-                <!-- Events, Login, Register and Admin links come in later phases -->
+                <a href="{{ url_for('events.list_events') }}">Events</a>
+                {# current_user comes from Flask-Login and is available in every template #}
+                {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin %}
+                        <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+                    {% endif %}
+                    <span class="nav-user">Hi, {{ current_user.name }}</span>
+                    <a href="{{ url_for('auth.logout') }}">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}">Login</a>
+                    <a href="{{ url_for('auth.register') }}">Register</a>
+                {% endif %}
             </nav>
         </div>
     </header>
