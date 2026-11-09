@@ -137,7 +137,7 @@ built so that every line can be explained. The objectives were:
 \toprule
 \textbf{Module} & \textbf{Where and how it is used} \\
 \midrule
-HTML/CSS & 16 Jinja2 templates in \code{app/templates/} that extend one \code{base.html}
+HTML/CSS & 15 Jinja2 templates in \code{app/templates/}: one \code{base.html} layout and 14 pages that extend it
            layout; one hand-written stylesheet \code{app/static/style.css} using CSS custom
            properties (variables), flexbox, CSS grid and horizontally scrolling tables for phones.
            The fill-rate bars on the reports page are pure CSS. \\
@@ -391,7 +391,7 @@ ordinary text to search for, not as SQL.
 
 \begin{figure}[H]
 \centering
-\screenshot{figures/events_search.png}{0.85\linewidth}{Events page with a keyword and category filter applied}
+\screenshot{figures/search_page.png}{0.85\linewidth}{Events page with the search form}
 \caption{Searching and filtering upcoming events.}
 \label{fig:search}
 \end{figure}
@@ -483,14 +483,14 @@ Section~\ref{sec:profiling}.
 
 \begin{figure}[H]
 \centering
-\screenshot{figures/reports_page.png}{0.85\linewidth}{Reports page, top: popular categories and venue utilisation}
+\screenshot{figures/reports_overview.png}{0.85\linewidth}{Reports page, top: popular categories and venue utilisation}
 \caption{Reports page: popular categories and venue utilisation (demo data, 50 events).}
 \label{fig:reports1}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\screenshot{figures/reports_page_2.png}{0.85\linewidth}{Reports page, scrolled down: registrations per event with fill-rate bars}
+\screenshot{figures/reports_per_event.png}{0.85\linewidth}{Reports page, scrolled down: registrations per event with fill-rate bars}
 \caption{Reports page: rest of venue utilisation and registrations per event with CSS fill-rate bars.}
 \label{fig:reports2}
 \end{figure}
@@ -598,8 +598,8 @@ on each.
 
 \begin{figure}[H]
 \centering
-\screenshot{figures/test_run.png}{0.9\linewidth}{Git Bash window after ./scripts/test.sh, followed by timings.txt}
-\caption{Running \texttt{./scripts/test.sh} in Git Bash (taken during the profiling phase, when
+\screenshot{figures/test_run.png}{0.9\linewidth}{Terminal after ./scripts/test.sh, followed by timings.txt}
+\caption{Running \texttt{./scripts/test.sh} in the VS Code terminal (Git Bash) (taken during the profiling phase, when
 there were 44 tests), followed by the baseline \texttt{timings.txt}.}
 \end{figure}
 

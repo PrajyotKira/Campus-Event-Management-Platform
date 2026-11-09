@@ -15,7 +15,7 @@ Solo course project for **CS 202C** (November 2026) by **Prajyot**.
 | **SQL** | Raw SQL through Python's built-in `sqlite3` (no ORM): [`sql/schema.sql`](sql/schema.sql) (tables, `UNIQUE`, `CHECK`, foreign keys, `ON DELETE CASCADE`), [`sql/indexes.sql`](sql/indexes.sql), parameterised queries with `?`, `JOIN` + `GROUP BY` reports, `EXPLAIN QUERY PLAN` |
 | **Git** | Small commits using the `feat:` / `fix:` / `test:` / `perf:` / `chore:` / `docs:` convention; `.gitignore` and `.gitattributes` (keeps LF line endings for Bash scripts) |
 | **Bash** | Automation scripts in [`scripts/`](scripts/) for setup, running, seeding, testing, profiling and building the docs; all use `set -euo pipefail` and work in Git Bash on Windows and on Linux/macOS |
-| **LaTeX** | Project report [`report/report.tex`](report/report.tex) (TikZ diagrams, listings, pgfplots) and Beamer slides [`report/slides.tex`](report/slides.tex) |
+| **LaTeX** | Project report [`report/report.tex`](report/report.tex) (TikZ diagrams, listings, pgfplots), Beamer slides [`report/slides.tex`](report/slides.tex), and four guides in [`docs/`](docs/) sharing one style file |
 
 ## Features
 
@@ -68,7 +68,7 @@ ADMIN_EMAIL=me@example.com ADMIN_PASSWORD=secret ./scripts/setup.sh
 | `./scripts/seed.sh [N]` | Fill the database with fake data: 10 venues, 100 students, N events (default 50) and random registrations that never exceed capacity. Admins are kept. |
 | `./scripts/test.sh` | Run all tests with `pytest -v` (extra arguments are passed on, e.g. `./scripts/test.sh -k clash`) |
 | `./scripts/profile.sh <label> [N]` | Build a separate profiling database with N events (default 2000), profile the reports and search with cProfile, and save results in `profiling/<label>/` |
-| `./scripts/build_docs.sh` | Compile the LaTeX report and slides to PDF (if LaTeX is installed) |
+| `./scripts/build_docs.sh` | Compile all six LaTeX documents (report, slides and the four guides) to PDF (if LaTeX is installed) |
 
 **Demo logins** (after `./scripts/setup.sh` and `./scripts/seed.sh`):
 
@@ -98,10 +98,26 @@ Campus Event Management Platform/
 ├── tests/                 pytest fixtures (conftest.py) and 45 tests
 ├── profiling/             run_profile.py, explain.py, RESULTS.md, before/, rewrite_only/, after/
 ├── report/                report.tex, slides.tex, figures/
+├── docs/                  campusdoc.sty + user manual, installation, developer and test guides
 ├── instance/              campus.db (created by setup.sh, not in git)
 ├── requirements.txt, pytest.ini, .gitignore, .gitattributes
 ├── README.md, AI_USAGE.md, CLAUDE.md
 ```
+
+## Documentation
+
+All documentation is written in LaTeX and compiled with `./scripts/build_docs.sh`; each PDF sits next to its source.
+
+| Document | Source | PDF | For |
+|---|---|---|---|
+| Project report | [`report/report.tex`](report/report.tex) | [`report.pdf`](report/report.pdf) | examiners: design, implementation, profiling results |
+| Presentation slides | [`report/slides.tex`](report/slides.tex) | [`slides.pdf`](report/slides.pdf) | the project presentation (Beamer, 16:9) |
+| User Manual | [`docs/user_manual.tex`](docs/user_manual.tex) | [`user_manual.pdf`](docs/user_manual.pdf) | students and admins using the site |
+| Installation & Operations Guide | [`docs/installation_guide.tex`](docs/installation_guide.tex) | [`installation_guide.pdf`](docs/installation_guide.pdf) | installing, configuring, backing up, troubleshooting |
+| Developer Guide | [`docs/developer_guide.tex`](docs/developer_guide.tex) | [`developer_guide.pdf`](docs/developer_guide.pdf) | architecture, database, every route and function, conventions |
+| Test Plan & Report | [`docs/test_report.tex`](docs/test_report.tex) | [`test_report.pdf`](docs/test_report.pdf) | all 45 test cases, traceability, results, coverage |
+
+The guides in `docs/` share the style file [`docs/campusdoc.sty`](docs/campusdoc.sty) and reuse the screenshots in `report/figures/`. To compile on Overleaf, upload `report/` and `docs/` side by side.
 
 ## Testing
 
@@ -139,11 +155,11 @@ Full details, cProfile output and `EXPLAIN QUERY PLAN` comparisons are in [**pro
 
 Reports page: popular categories and venue utilisation
 
-![Reports page](report/figures/events_search.png)
+![Reports page](report/figures/reports_overview.png)
 
 Registrations per event with fill-rate bars
 
-![Registrations per event](report/figures/admin_events.png)
+![Registrations per event](report/figures/reports_per_event.png)
 
 SnakeViz view of the profile *before* optimisation: almost all time is in `count_registrations` → `sqlite3 execute`
 
