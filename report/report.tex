@@ -19,24 +19,32 @@
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{upquote}    % straight quotes ' in code and verbatim
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,fit,shapes.geometric}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
 \usepackage{hyperref}   % load last
-\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black, citecolor=blue!50!black}
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black, citecolor=blue!50!black,
+            pdftitle={Campus Event Management Platform}, pdfauthor={Prajyot}}
 
 % ---------- Helper commands ----------
 % \code{...}: inline code; \detokenize lets us write underscores directly.
 \newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+% Let long code words wrap instead of sticking out into the margin.
+\setlength{\emergencystretch}{3em}
+% Smaller font for verbatim blocks (profiler output, query plans) so they fit the page.
+\makeatletter
+\renewcommand{\verbatim@font}{\footnotesize\ttfamily}
+\makeatother
 % Red reminder for things only the author can fill in. Remove before submitting.
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
 % \screenshot{file}{width}{what to capture}: shows the image if the file exists,
-% otherwise a box telling you which screenshot to take.
+% otherwise a box telling you which screenshot to take (so the build never fails).
 \newcommand{\screenshot}[3]{%
   \IfFileExists{#1}{\includegraphics[width=#2]{#1}}{%
     \fbox{\parbox[c][3.5cm][c]{0.8\linewidth}{\centering\small
-      Screenshot missing: save it as \texttt{report/\detokenize{#1}}\\[4pt]
+      Screenshot missing: save it as\\ \nolinkurl{report/#1}\\[4pt]
       (#3)}}}}
 
 % ---------- Code listing style ----------
@@ -47,6 +55,7 @@
   frame=single, rulecolor=\color{black!20},
   breaklines=true, columns=fullflexible, keepspaces=true,
   showstringspaces=false, tabsize=4, captionpos=b,
+  upquote=true,
   keywordstyle=\color{blue!70!black}\bfseries,
   commentstyle=\color{green!40!black}\itshape,
   stringstyle=\color{red!60!black},
@@ -64,7 +73,7 @@
   \vspace{2.5cm}
   {\Large Prajyot\par}
   \vspace{0.3cm}
-  {\large {MC25BT012}\par}
+  {\large {MC25B012}\par}
   \vspace{1.5cm}
   {\large Course: CS 202C\par}
   \vspace{0.2cm}
@@ -88,6 +97,7 @@ query and adding three indexes reduced the total time from 10.9\,s to 32.6\,ms (
 confirmed that every report number stayed the same.
 \end{abstract}
 
+\newpage
 \tableofcontents
 \newpage
 
@@ -145,7 +155,7 @@ Git      & 23 small commits (before this documentation phase) following a
 Bash     & Seven scripts in \code{scripts/} for setup, running, seeding, testing, profiling
            and building the documents, all with \code{set -euo pipefail} and working in Git
            Bash on Windows as well as on Linux/macOS. \\
-LaTeX    & This report (TikZ diagrams, \code{listings} code, a \code{pgfplots} chart) and the
+LaTeX    & This report (TikZ diagrams~\cite{tikz}, \code{listings} code, a \code{pgfplots} chart) and the
            Beamer slides. \\
 \bottomrule
 \end{tabularx}
@@ -156,8 +166,8 @@ LaTeX    & This report (TikZ diagrams, \code{listings} code, a \code{pgfplots} c
 \section{System architecture}
 
 The application follows the classic three-tier pattern: the browser sends HTTP requests,
-Flask decides which Python function handles each URL, the function reads or writes the
-SQLite database with SQL, and the result is rendered into HTML by a Jinja2 template.
+Flask~\cite{flask} decides which Python function handles each URL, the function reads or writes the
+SQLite database with SQL~\cite{pysqlite}, and the result is rendered into HTML by a Jinja2 template.
 Figure~\ref{fig:arch} shows the parts.
 
 \begin{figure}[H]
@@ -204,9 +214,9 @@ Figure~\ref{fig:arch} shows the parts.
 \end{figure}
 
 \paragraph{Application factory.} \code{create_app()} in \code{app/__init__.py} builds the Flask
-app, sets the secret key and database path, registers the Blueprints, sets up Flask-Login
-and adds friendly 403/404 error pages. Building the app inside a function lets the tests
-create a fresh app that points at a temporary database.
+app, sets the secret key and database path, registers the Blueprints, sets up
+Flask-Login~\cite{flasklogin} and adds friendly 403/404 error pages. Building the app inside a
+function lets the tests create a fresh app that points at a temporary database.
 
 \paragraph{Blueprints.} Each Blueprint groups related routes in its own file:
 \code{auth} (\code{/auth/...}), \code{events} (\code{/events/...} and \code{/my-registrations})
@@ -219,10 +229,11 @@ it in Flask's \code{g} object; \code{close_db()} closes it when the request ends
 runs \code{PRAGMA foreign_keys = ON}, because SQLite does not enforce foreign keys unless asked.
 
 \paragraph{Security basics.} Passwords are stored only as salted hashes
-(\code{generate_password_hash}). Every SQL value is passed through a \code{?} placeholder, which
-prevents SQL injection. Jinja2 escapes all output, which prevents HTML injection. Every action that
-changes data is a \code{POST} form, and the session cookie uses \code{SameSite=Lax} so other websites
-cannot submit those forms on a logged-in user's behalf.
+(\code{generate_password_hash}~\cite{werkzeug}). Every SQL value is passed through a \code{?}
+placeholder, which prevents SQL injection. Jinja2 escapes all output, which prevents HTML
+injection. Every action that changes data is a \code{POST} form, and the session cookie uses
+\code{SameSite=Lax}, so browsers do not send it with form submissions coming from other websites.
+This blocks most cross-site request forgery; proper CSRF tokens are listed as future work.
 
 % =====================================================================
 \section{Database design}
@@ -380,8 +391,9 @@ ordinary text to search for, not as SQL.
 
 \begin{figure}[H]
 \centering
-\screenshot{figures/search_page.png}{0.85\linewidth}{Events page with a keyword and category filter applied}
+\screenshot{figures/events_search.png}{0.85\linewidth}{Events page with a keyword and category filter applied}
 \caption{Searching and filtering upcoming events.}
+\label{fig:search}
 \end{figure}
 
 \subsection{Registering and cancelling}
@@ -471,14 +483,14 @@ Section~\ref{sec:profiling}.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{figures/events_search.png}
+\screenshot{figures/reports_page.png}{0.85\linewidth}{Reports page, top: popular categories and venue utilisation}
 \caption{Reports page: popular categories and venue utilisation (demo data, 50 events).}
 \label{fig:reports1}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{figures/admin_events.png}
+\screenshot{figures/reports_page_2.png}{0.85\linewidth}{Reports page, scrolled down: registrations per event with fill-rate bars}
 \caption{Reports page: rest of venue utilisation and registrations per event with CSS fill-rate bars.}
 \label{fig:reports2}
 \end{figure}
@@ -486,8 +498,8 @@ Section~\ref{sec:profiling}.
 % =====================================================================
 \section{Bash automation}
 
-Every routine task has a script. All of them start with \code{set -euo pipefail}: \code{-e}
-stops on the first failing command, \code{-u} treats unset variables as errors, and
+Every routine task has a script~\cite{bash}. All of them start with \code{set -euo pipefail}:
+\code{-e} stops on the first failing command, \code{-u} treats unset variables as errors, and
 \code{pipefail} makes a pipeline fail if any part fails. They share helper functions from
 \code{scripts/common.sh}.
 
@@ -500,7 +512,7 @@ stops on the first failing command, \code{-u} treats unset variables as errors, 
 \midrule
 \code{setup.sh}      & Finds a working Python, creates \code{venv/}, installs requirements, creates the database, adds indexes, creates the admin (login can be changed with \code{ADMIN_EMAIL} / \code{ADMIN_PASSWORD}). \\
 \code{run.sh}        & Activates the venv, checks the database exists, starts Flask in debug mode (\code{PORT} can be changed). \\
-\code{seed.sh [N]}   & Validates N with a regular expression (\code{^[0-9]+$}) and fills the database with Faker data. \\
+\code{seed.sh [N]}   & Validates N with a regular expression (\code{^[0-9]+$}) and fills the database with Faker~\cite{faker} data. \\
 \code{test.sh}       & Runs \code{pytest -v}; extra arguments are passed on with \code{"$@"}. \\
 \code{profile.sh}    & Builds a separate profiling database (\code{CAMPUS_DB}), seeds it, optionally adds indexes (\code{APPLY_INDEXES}), runs the profiler and saves the query plans. \\
 \code{build_docs.sh} & Compiles this report and the slides if LaTeX is installed. \\
@@ -541,9 +553,9 @@ activate_venv() {
 % =====================================================================
 \section{Testing}
 
-The project has \textbf{45 pytest tests, all passing}. A fixture in \code{tests/conftest.py}
-creates a fresh app for every test with its database in pytest's temporary folder
-(\code{tmp_path}) and runs \code{schema.sql} on it, so tests never touch real data and cannot
+The project has \textbf{45 pytest tests, all passing}~\cite{pytest}. A fixture in
+\code{tests/conftest.py} creates a fresh app for every test with its database in pytest's temporary
+folder (\code{tmp_path}) and runs \code{schema.sql} on it, so tests never touch real data and cannot
 affect each other. Other fixtures provide a fake browser (\code{client}), helpers to register
 and log in, clients already logged in as a student or an admin, and a small set of sample events
 (three upcoming, one in the past).
@@ -586,7 +598,7 @@ on each.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\linewidth]{figures/reports_page.png}
+\screenshot{figures/test_run.png}{0.9\linewidth}{Git Bash window after ./scripts/test.sh, followed by timings.txt}
 \caption{Running \texttt{./scripts/test.sh} in Git Bash (taken during the profiling phase, when
 there were 44 tests), followed by the baseline \texttt{timings.txt}.}
 \end{figure}
@@ -596,6 +608,7 @@ there were 44 tests), followed by the baseline \texttt{timings.txt}.}
 \label{sec:profiling}
 
 \subsection{Method}
+\begin{sloppypar}% long file names here would otherwise stick into the margin
 
 The reports page was first written the naive way on purpose, and then measured.
 \code{scripts/profile.sh} builds a separate database (\code{profiling/profile.db}, selected
@@ -608,12 +621,14 @@ so every run uses the same data. \code{profiling/run_profile.py} then, for each 
         \code{time.perf_counter()} (cProfile itself slows Python down);
   \item counts the SQL statements one run sends, using \code{sqlite3}'s
         \code{set_trace_callback};
-  \item runs it once more under \code{cProfile} and saves \code{profile.prof} plus a
-        \code{pstats} summary sorted by cumulative time.
+  \item runs it once more under \code{cProfile}~\cite{cprofile} and saves \code{profile.prof}
+        plus a \code{pstats} summary sorted by cumulative time.
 \end{enumerate}
 
 The workloads are the three report functions and three typical event searches.
-\code{profiling/explain.py} also records \code{EXPLAIN QUERY PLAN} for the important queries.
+\code{profiling/explain.py} also records \code{EXPLAIN QUERY PLAN}~\cite{sqlite-planner} for the
+important queries.
+\end{sloppypar}
 
 \subsection{The bottleneck: the N+1 query problem}
 
@@ -661,14 +676,15 @@ entries for every single count: roughly $2000 \times 67{,}423 \approx 135$ milli
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\linewidth]{figures/before_snakeviz.png}
-\caption{SnakeViz icicle chart of the \emph{before} profile: \texttt{event\_stats} (3.57\,s) is
-almost entirely \texttt{count\_registrations} $\rightarrow$ \texttt{sqlite3 execute} (10.5\,s in total).}
+\screenshot{figures/before_snakeviz.png}{0.9\linewidth}{snakeviz profiling/before/profile.prof, icicle view}
+\caption{SnakeViz~\cite{snakeviz} icicle chart of the \emph{before} profile: \texttt{event\_stats}
+(3.57\,s) is almost entirely \texttt{count\_registrations} $\rightarrow$ \texttt{sqlite3 execute}
+(10.5\,s in total).}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\linewidth]{figures/snakeviz.png}
+\screenshot{figures/snakeviz.png}{0.9\linewidth}{snakeviz profiling/before/profile.prof, table sorted by tottime}
 \caption{SnakeViz table of the \emph{before} profile, sorted by own time: 6016 calls to
 \texttt{execute} take 10.48\,s.}
 \end{figure}
@@ -692,8 +708,8 @@ GROUP BY e.id
 ORDER BY registered DESC, e.start_time, e.id
 \end{lstlisting}
 
-\paragraph{2. Indexes.} \code{sql/indexes.sql} adds three indexes, applied by \code{setup.sh}
-and \code{profile.sh}:
+\paragraph{2. Indexes.} \code{sql/indexes.sql} adds three indexes~\cite{sqlite-index}, applied by
+\code{setup.sh} and \code{profile.sh}:
 
 \begin{lstlisting}[language=SQL, caption={sql/indexes.sql (comments shortened).}]
 -- counting / joining registrations per event
@@ -714,6 +730,7 @@ A second index would only slow down writes.
 \begin{table}[H]
 \centering
 \small
+\setlength{\tabcolsep}{4.5pt}
 \begin{tabular}{@{}l r r r r r r@{}}
 \toprule
 & \multicolumn{2}{c}{\textbf{SQL calls}} & \multicolumn{3}{c}{\textbf{Average time (ms)}} & \\
@@ -729,7 +746,8 @@ A second index would only slow down writes.
 \bottomrule
 \end{tabular}
 \caption{Before and after, 2000 events and 67{,}423 registrations. \emph{Rewrite only} = new
-queries without indexes (\texttt{APPLY\_INDEXES=0 ./scripts/profile.sh rewrite\_only}).}
+queries without indexes (\texttt{APPLY\_INDEXES=0 ./scripts/profile.sh rewrite\_only}).
+Totals are computed from unrounded measurements.}
 \label{tab:results}
 \end{table}
 
@@ -759,9 +777,9 @@ queries without indexes (\texttt{APPLY\_INDEXES=0 ./scripts/profile.sh rewrite\_
 
 After the changes, \code{execute} is called 6 times and takes 0.026\,s in total (it was 6016 calls
 and 10.48\,s), and the profiled run makes 6{,}139 function calls instead of 86{,}185. An extra
-measurement of the \emph{old} N+1 loop on the \emph{indexed} database took about 115\,ms. So the
-indexes alone give about $31\times$, the rewrite alone about $157\times$, and both together about
-$395\times$ for \code{event_stats}. Each fix helps, and they work better together.
+measurement of the \emph{old} N+1 loop on the \emph{indexed} database took about 115\,ms. So for
+\code{event_stats} the indexes alone give about $31\times$, the rewrite alone about $157\times$, and
+both together about $395\times$. Each fix helps, and they work better together.
 
 \begin{figure}[H]
 \centering
@@ -830,9 +848,9 @@ trade-off is worth it.
 % =====================================================================
 \section{Git workflow}
 
-The project was developed in phases, with all commits made by the author on the \code{main}
-branch. Each commit is small, does one thing, and leaves the project in a working state where the
-tests pass. Commit messages follow the Conventional Commits style:
+The project was developed in phases~\cite{progit}, with all commits made by the author on the
+\code{main} branch. Each commit is small, does one thing, and leaves the project in a working state
+where the tests pass. Commit messages follow the Conventional Commits style~\cite{cc}:
 
 \begin{table}[H]
 \centering
@@ -865,6 +883,8 @@ tests pass. Commit messages follow the Conventional Commits style:
 3. Registrations and admin & 5 & \code{feat: let students register for and cancel events}; \code{feat: add admin CRUD for venues and events with clash check and CSV export} \\
 4a. Naive reports + baseline & 3 & \code{feat: add admin reports page (naive N+1 version) with tests}; \code{docs: record baseline profile of naive reports} \\
 4b. Optimisation      & 4 & \code{perf: replace N+1 report loops with JOIN + GROUP BY queries}; \code{perf: add database indexes and apply them in setup and profiling} \\
+\midrule
+\textbf{Total}        & \textbf{23} & \\
 \bottomrule
 \end{tabularx}
 \caption{History summary (\texttt{git log --oneline}).}
@@ -898,8 +918,16 @@ redundant index. I ran the profiling, took the screenshots and made every git co
 A phase-by-phase log is in \code{AI_USAGE.md} in the repository.
 
 \paragraph{In my own words.}
-\todo{Write 3--5 sentences yourself: what you learned, what you checked or changed by hand, and
-anything you did differently from the suggestions. Keep it consistent with AI\_USAGE.md.}
+Working on this project helped me understand how different components of a web application work
+together, particularly Flask routing, database operations using SQLite, authentication, and event
+registration workflows. I also gained practical experience in writing Bash automation scripts,
+testing application functionality with pytest, and analysing performance using cProfile and
+SQLite's \code{EXPLAIN QUERY PLAN}. I used AI tools, including Claude and Claude Code, to assist
+with code drafting, debugging, documentation, and understanding unfamiliar concepts. However, I
+reviewed and modified the generated code, executed the application and tests locally, verified the
+reported profiling results, and checked the final outputs myself. This project helped me understand
+the importance of independently validating AI-assisted work rather than relying on generated code
+without verification.
 
 % =====================================================================
 \section{Challenges}
