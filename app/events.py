@@ -49,21 +49,12 @@ def is_registered(user_id, event_id):
     return row is not None
 
 
-@bp.route("/events/")
-def list_events():
-    """List upcoming events, optionally filtered by the search form.
+def search_events(keyword="", category="", venue_id=None, date_from="", date_to=""):
+    """Return upcoming events matching the given filters (empty filter = ignored).
 
-    The form uses GET, so the filters appear in the URL, for example
-    /events/?q=python&category=Workshop
+    This is a plain function (not a route) so it can be tested and profiled directly.
     """
-    # 1. Read the filter values from the URL. type=int turns bad input into None.
-    keyword = request.args.get("q", "").strip()
-    category = request.args.get("category", "")
-    venue_id = request.args.get("venue_id", type=int)
-    date_from = request.args.get("date_from", "")
-    date_to = request.args.get("date_to", "")
-
-    # 2. Build the WHERE clause piece by piece.
+    # Build the WHERE clause piece by piece.
     # `conditions` only ever holds fixed SQL text written by us; every value the
     # user typed goes into `params` and reaches SQLite through a ? placeholder.
     # That is what protects us from SQL injection.
@@ -89,7 +80,7 @@ def list_events():
         conditions.append("e.start_time <= ?")
         params.append(date_to + " 23:59")
 
-    # 3. GROUP BY e.id gives one row per event, so COUNT counts that event's registrations.
+    # GROUP BY e.id gives one row per event, so COUNT counts that event's registrations.
     sql = (
         "SELECT e.id, e.title, e.category, e.start_time, e.end_time, e.capacity, "
         "       v.name AS venue_name, "
@@ -101,10 +92,25 @@ def list_events():
         "GROUP BY e.id "
         "ORDER BY e.start_time"
     )
+    return get_db().execute(sql, params).fetchall()
 
-    conn = get_db()
-    events = conn.execute(sql, params).fetchall()
-    venues = conn.execute("SELECT id, name FROM venues ORDER BY name").fetchall()
+
+@bp.route("/events/")
+def list_events():
+    """List upcoming events, optionally filtered by the search form.
+
+    The form uses GET, so the filters appear in the URL, for example
+    /events/?q=python&category=Workshop
+    """
+    # Read the filter values from the URL. type=int turns bad input into None.
+    keyword = request.args.get("q", "").strip()
+    category = request.args.get("category", "")
+    venue_id = request.args.get("venue_id", type=int)
+    date_from = request.args.get("date_from", "")
+    date_to = request.args.get("date_to", "")
+
+    events = search_events(keyword, category, venue_id, date_from, date_to)
+    venues = get_db().execute("SELECT id, name FROM venues ORDER BY name").fetchall()
 
     # Send the current filter values back so the form keeps what the user typed.
     filters = {

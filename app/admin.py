@@ -10,6 +10,7 @@ from datetime import datetime
 from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
+from . import reports
 from .auth import admin_required
 from .db import get_db
 from .events import CATEGORIES, now_string
@@ -344,6 +345,20 @@ def delete_event(event_id):
         abort(404)
     flash("Event deleted.", "success")
     return redirect(url_for("admin.list_events"))
+
+
+# ======================= Reports =======================
+
+@bp.route("/reports")
+@admin_required
+def reports_page():
+    """Summary tables. The calculations live in app/reports.py."""
+    return render_template(
+        "admin/reports.html",
+        events=reports.event_stats(),
+        categories=reports.popular_categories(),
+        venues=reports.venue_utilisation(),
+    )
 
 
 # ======================= Participants =======================

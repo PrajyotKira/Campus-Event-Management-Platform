@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Reports | Admin{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('admin.dashboard') }}">&larr; Back to dashboard</a></p>
+<h1>Reports</h1>
+
+<h2>Popular categories</h2>
+<div class="table-wrap">
+<table class="table">
+    <thead><tr><th>Category</th><th>Events</th><th>Registrations</th></tr></thead>
+    <tbody>
+    {% for c in categories %}
+        <tr><td>{{ c.category }}</td><td>{{ c.events }}</td><td>{{ c.registrations }}</td></tr>
+    {% else %}
+        {# for ... else: the else part runs when the list is empty #}
+        <tr><td colspan="3">No events yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<h2>Venue utilisation</h2>
+<p class="muted">Utilisation = registrations as a percentage of the seats offered by the venue's events.</p>
+<div class="table-wrap">
+<table class="table">
+    <thead><tr><th>Venue</th><th>Location</th><th>Events</th><th>Registrations</th>
+               <th>Seats offered</th><th>Utilisation</th></tr></thead>
+    <tbody>
+    {% for v in venues %}
+        <tr>
+            <td>{{ v.name }}</td>
+            <td>{{ v.location }}</td>
+            <td>{{ v.events }}</td>
+            <td>{{ v.registrations }}</td>
+            <td>{{ v.seats_offered }}</td>
+            <td>{{ v.utilisation }}%</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="6">No venues yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<h2>Registrations per event</h2>
+<div class="table-wrap">
+<table class="table">
+    <thead><tr><th>Event</th><th>Category</th><th>Start</th><th>Registered</th>
+               <th>Capacity</th><th>Fill rate</th></tr></thead>
+    <tbody>
+    {% for e in events %}
+        <tr>
+            <td><a href="{{ url_for('admin.participants', event_id=e.id) }}">{{ e.title }}</a></td>
+            <td>{{ e.category }}</td>
+            <td>{{ e.start_time }}</td>
+            <td>{{ e.registered }}</td>
+            <td>{{ e.capacity }}</td>
+            <td>
+                {# A bar whose width is the fill rate, drawn with plain CSS #}
+                <div class="fill-bar"><span style="width: {{ e.fill_rate }}%"></span></div>
+                {{ e.fill_rate }}%
+            </td>
+        </tr>
+    {% else %}
+        <tr><td colspan="6">No events yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}
