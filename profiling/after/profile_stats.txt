@@ -1,0 +1,30 @@
+cProfile results (after): one profiled run of each workload
+
+         6139 function calls in 0.034 seconds
+
+   Ordered by: cumulative time
+   List reduced from 23 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        6    0.026    0.004    0.026    0.004 {method 'execute' of 'sqlite3.Connection' objects}
+        1    0.000    0.000    0.011    0.011 run_profile.py:29(run_searches)
+        3    0.000    0.000    0.011    0.004 events.py:99(search_events)
+        1    0.002    0.002    0.010    0.010 reports.py:72(event_stats)
+        1    0.000    0.000    0.007    0.007 reports.py:86(popular_categories)
+        1    0.000    0.000    0.006    0.006 reports.py:94(venue_utilisation)
+        6    0.004    0.001    0.004    0.001 {method 'fetchall' of 'sqlite3.Cursor' objects}
+     2010    0.000    0.000    0.001    0.000 reports.py:18(percent)
+     2010    0.001    0.000    0.001    0.000 {built-in method builtins.round}
+     2017    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        4    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        6    0.000    0.000    0.000    0.000 db.py:13(get_db)
+        3    0.000    0.000    0.000    0.000 events.py:52(build_search_sql)
+       12    0.000    0.000    0.000    0.000 local.py:310(__get__)
+        5    0.000    0.000    0.000    0.000 {method 'strftime' of 'datetime.date' objects}
+        3    0.000    0.000    0.000    0.000 events.py:18(now_string)
+       12    0.000    0.000    0.000    0.000 local.py:515(_get_current_object)
+       12    0.000    0.000    0.000    0.000 local.py:293(bind_f)
+        4    0.000    0.000    0.000    0.000 {built-in method now}
+        6    0.000    0.000    0.000    0.000 ctx.py:104(__contains__)
+
+

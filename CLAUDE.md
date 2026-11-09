@@ -9,8 +9,8 @@ No over-engineering, no clever abstractions.
   Suggest small commits with `feat:` / `fix:` / `chore:` / `docs:` / `test:` prefixes instead.
 - **Raw SQL only** via Python's built-in `sqlite3` (no ORM, the SQL is graded).
   Always use `?` placeholders, never string formatting.
-- **Do not add indexes** to `sql/schema.sql` yet. Adding indexes is the planned
-  profiling optimisation (cProfile before/after).
+- Indexes live in `sql/indexes.sql` (not schema.sql); they were the profiling optimisation.
+  Keep `profiling/before/` untouched: it is the evidence of the naive version.
 - Hand-written CSS only (no Bootstrap/Tailwind/JS frameworks).
 - Log AI help in `AI_USAGE.md` (Date | Tool | What AI did | What I changed/verified).
 
@@ -57,11 +57,14 @@ Times are stored as TEXT 'YYYY-MM-DD HH:MM'. `CATEGORIES` list lives in `app/eve
 Demo logins after `./scripts/setup.sh && ./scripts/seed.sh`:
 admin `admin@campus.local` / `admin123`, students `student1..100@campus.local` / `student123`.
 
-Profiling: `./scripts/profile.sh <label> [events=2000]` (RUNS env var, default 3) builds a
-separate DB `profiling/profile.db` via the `CAMPUS_DB` env var (read in create_app), seeds it,
-then runs `python -m profiling.run_profile <label> <runs>`. Output in profiling/<label>/:
-profile.prof (view with `snakeviz`), profile_stats.txt (top 20 cumulative), timings.txt.
-`search_events()` in events.py is a plain function so it can be profiled.
+Profiling: `./scripts/profile.sh <label> [events=2000]` (env vars RUNS=3, APPLY_INDEXES=1)
+builds a separate DB `profiling/profile.db` via the `CAMPUS_DB` env var (read in create_app),
+seeds it, adds indexes, then runs `python -m profiling.run_profile <label> <runs>` and
+`python -m profiling.explain <label>`. Output in profiling/<label>/: profile.prof (view with
+`snakeviz`), profile_stats.txt (top 20 cumulative), timings.txt, query_plans.txt.
+`build_search_sql()` / `search_events()` in events.py are plain functions so they can be
+profiled and EXPLAINed. Indexes are NOT part of schema.sql / init_db (tests run without them,
+plus one test that applies them).
 
 Tests: `pytest.ini` sets `pythonpath = .`; fixtures in `tests/conftest.py`
 (`app` on a tmp_path DB, `client`, `auth`, `admin_user`, `sample_events` -> {title: id},
@@ -87,8 +90,11 @@ Gotcha: Jinja parses `{% %}` even inside HTML `<!-- -->` comments, so use `{# #}
       (N+1: one COUNT query per event); test_reports.py; profile.sh + profiling/run_profile.py;
       baseline saved in profiling/before/ (2000 events, 67,423 registrations:
       each report ~2000 SQL calls, ~3.5 s; search ~60 ms for 3 searches)
-- [ ] Phase 4 Part B (wait for the student to say "continue"): JOIN + GROUP BY rewrites of
-      reports.py (keep `percent()` in Python so numbers can't change), sql/indexes.sql applied
-      by setup.sh and profile.sh, EXPLAIN QUERY PLAN before/after, ./scripts/profile.sh after,
-      profiling/RESULTS.md
+- [x] Phase 4 Part B: reports.py rewritten as one JOIN + GROUP BY query each (SQL in
+      module constants; `percent()` stays in Python); sql/indexes.sql (registrations.event_id,
+      events(venue_id, start_time), events.category; NOT registrations.user_id because the
+      UNIQUE(user_id, event_id) autoindex already covers it) applied via `flask add-indexes`
+      in setup.sh and profile.sh; profiling/explain.py; results in profiling/after/,
+      profiling/rewrite_only/ and profiling/RESULTS.md (total 10,916 ms -> 32.6 ms, ~335x;
+      SQL calls 6016 -> 6). 45 tests.
 - [ ] Phase 5: README, LaTeX report, Beamer slides

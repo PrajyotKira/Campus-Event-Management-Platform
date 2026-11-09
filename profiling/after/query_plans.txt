@@ -1,0 +1,63 @@
+Query plans (after)
+
+Indexes in the database:
+    idx_events_category  (on events)
+    idx_events_venue_start  (on events)
+    idx_registrations_event  (on registrations)
+    sqlite_autoindex_registrations_1  (on registrations)
+    sqlite_autoindex_users_1  (on users)
+
+== Search: no filters
+    SCAN e
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    SEARCH r USING COVERING INDEX idx_registrations_event (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Search: keyword 'workshop'
+    SCAN e
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    SEARCH r USING COVERING INDEX idx_registrations_event (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Search: category + date range
+    SEARCH e USING INDEX idx_events_category (category=?)
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    SEARCH r USING COVERING INDEX idx_registrations_event (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Search: venue filter
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    SEARCH e USING INDEX idx_events_venue_start (venue_id=? AND start_time>?)
+    SEARCH r USING COVERING INDEX idx_registrations_event (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR GROUP BY
+    USE TEMP B-TREE FOR ORDER BY
+
+== Naive report: one COUNT per event (was run ~2000 times per report)
+    SEARCH registrations USING COVERING INDEX idx_registrations_event (event_id=?)
+
+== Report: event_stats
+    SCAN e
+    SEARCH r USING COVERING INDEX idx_registrations_event (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Report: popular_categories
+    SCAN e USING COVERING INDEX idx_events_category
+    SEARCH r USING COVERING INDEX idx_registrations_event (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR count(DISTINCT)
+    USE TEMP B-TREE FOR ORDER BY
+
+== Report: venue_utilisation
+    MATERIALIZE e
+      SCAN ev
+      SEARCH r USING COVERING INDEX idx_registrations_event (event_id=?) LEFT-JOIN
+    SCAN v
+    BLOOM FILTER ON e (venue_id=?)
+    SEARCH e USING AUTOMATIC COVERING INDEX (venue_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Venue clash check
+    SEARCH events USING INDEX idx_events_venue_start (venue_id=? AND start_time<?)
+
+== Is this student registered? (user_id lookup)
+    SEARCH registrations USING COVERING INDEX sqlite_autoindex_registrations_1 (user_id=? AND event_id=?)
+

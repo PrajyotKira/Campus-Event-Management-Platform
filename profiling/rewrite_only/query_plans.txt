@@ -1,0 +1,67 @@
+Query plans (rewrite_only)
+
+Indexes in the database:
+    sqlite_autoindex_registrations_1  (on registrations)
+    sqlite_autoindex_users_1  (on users)
+
+== Search: no filters
+    SCAN e
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    BLOOM FILTER ON r (event_id=?)
+    SEARCH r USING AUTOMATIC COVERING INDEX (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Search: keyword 'workshop'
+    SCAN e
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    BLOOM FILTER ON r (event_id=?)
+    SEARCH r USING AUTOMATIC COVERING INDEX (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Search: category + date range
+    SCAN e
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    BLOOM FILTER ON r (event_id=?)
+    SEARCH r USING AUTOMATIC COVERING INDEX (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Search: venue filter
+    SEARCH v USING INTEGER PRIMARY KEY (rowid=?)
+    SCAN e
+    BLOOM FILTER ON r (event_id=?)
+    SEARCH r USING AUTOMATIC COVERING INDEX (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Naive report: one COUNT per event (was run ~2000 times per report)
+    SCAN registrations USING COVERING INDEX sqlite_autoindex_registrations_1
+
+== Report: event_stats
+    SCAN e
+    BLOOM FILTER ON r (event_id=?)
+    SEARCH r USING AUTOMATIC COVERING INDEX (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Report: popular_categories
+    SCAN e
+    BLOOM FILTER ON r (event_id=?)
+    SEARCH r USING AUTOMATIC COVERING INDEX (event_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR GROUP BY
+    USE TEMP B-TREE FOR count(DISTINCT)
+    USE TEMP B-TREE FOR ORDER BY
+
+== Report: venue_utilisation
+    MATERIALIZE e
+      SCAN ev
+      BLOOM FILTER ON r (event_id=?)
+      SEARCH r USING AUTOMATIC COVERING INDEX (event_id=?) LEFT-JOIN
+    SCAN v
+    BLOOM FILTER ON e (venue_id=?)
+    SEARCH e USING AUTOMATIC COVERING INDEX (venue_id=?) LEFT-JOIN
+    USE TEMP B-TREE FOR ORDER BY
+
+== Venue clash check
+    SCAN events
+
+== Is this student registered? (user_id lookup)
+    SEARCH registrations USING COVERING INDEX sqlite_autoindex_registrations_1 (user_id=? AND event_id=?)
+
