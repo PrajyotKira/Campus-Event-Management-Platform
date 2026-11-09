@@ -80,7 +80,9 @@ def sample_events(app, admin_user):
 
     'Python Workshop' has "Python" in its title, 'Hackathon' only in its
     description, and the past event should never be listed.
+    Returns a dict {title: event id} so tests can find each event.
     """
+    ids = {}
     with app.app_context():
         conn = get_db()
         admin_id = conn.execute("SELECT id FROM users WHERE role = 'admin'").fetchone()[0]
@@ -96,10 +98,26 @@ def sample_events(app, admin_user):
             ("Old Python Talk", "This one already happened.", "Seminar", -3, 40),
         ]
         for title, description, category, days, capacity in events:
-            conn.execute(
+            ids[title] = conn.execute(
                 "INSERT INTO events (title, description, category, venue_id, "
                 "start_time, end_time, capacity, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (title, description, category, venue_id,
                  time_from_now(days), time_from_now(days + 0.1), capacity, admin_id),
-            )
+            ).lastrowid
         conn.commit()
+    return ids
+
+
+@pytest.fixture
+def student_client(client, auth):
+    """A test client that is logged in as a student."""
+    auth.register()
+    auth.login()
+    return client
+
+
+@pytest.fixture
+def admin_client(client, auth, admin_user):
+    """A test client that is logged in as the admin."""
+    auth.login(email=admin_user["email"], password=admin_user["password"])
+    return client
