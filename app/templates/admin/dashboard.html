@@ -4,6 +4,30 @@
 
 {% block content %}
 <h1>Admin dashboard</h1>
-<p>Only admins can see this page.</p>
-<p class="muted">Event and venue management, participant lists and reports will appear here.</p>
+
+<section class="stats">
+    <div class="card">
+        <span class="stat-number">{{ counts.events }}</span>
+        <span class="stat-label">Events ({{ counts.upcoming }} upcoming)</span>
+    </div>
+    <div class="card">
+        <span class="stat-number">{{ counts.venues }}</span>
+        <span class="stat-label">Venues</span>
+    </div>
+    <div class="card">
+        <span class="stat-number">{{ counts.students }}</span>
+        <span class="stat-label">Students</span>
+    </div>
+    <div class="card">
+        <span class="stat-number">{{ counts.registrations }}</span>
+        <span class="stat-label">Registrations</span>
+    </div>
+</section>
+
+<div class="admin-links">
+    <a class="button" href="{{ url_for('admin.list_events') }}">Manage events</a>
+    <a class="button" href="{{ url_for('admin.list_venues') }}">Manage venues</a>
+    <a class="button button-secondary" href="{{ url_for('admin.create_event') }}">+ New event</a>
+    <a class="button button-secondary" href="{{ url_for('admin.create_venue') }}">+ New venue</a>
+</div>
 {% endblock %}

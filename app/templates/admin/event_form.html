@@ -1,0 +1,53 @@
+{# One form for both "new event" and "edit event". event_id is None when creating. #}
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit event" if event_id else "New event" }} | Admin{% endblock %}
+
+{% block content %}
+<div class="form-card form-wide">
+    <h1>{{ "Edit event" if event_id else "New event" }}</h1>
+    <form method="post">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" required value="{{ form.get('title', '') }}">
+
+        <label for="description">Description</label>
+        <textarea id="description" name="description">{{ form.get('description', '') or '' }}</textarea>
+
+        <label for="category">Category</label>
+        <select id="category" name="category" required>
+            <option value="">Choose a category</option>
+            {% for c in categories %}
+                <option value="{{ c }}" {% if c == form.get('category') %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="venue_id">Venue</label>
+        <select id="venue_id" name="venue_id" required>
+            <option value="">Choose a venue</option>
+            {% for v in venues %}
+                {# |string so a number from the DB matches the text sent back by the form #}
+                <option value="{{ v.id }}"
+                    {% if v.id|string == form.get('venue_id')|string %}selected{% endif %}>
+                    {{ v.name }} (holds {{ v.capacity }})
+                </option>
+            {% endfor %}
+        </select>
+
+        {# datetime-local shows a date and time picker; it sends '2026-11-20T14:30' #}
+        <label for="start_time">Starts</label>
+        <input type="datetime-local" id="start_time" name="start_time" required
+               value="{{ form.get('start_time', '') }}">
+
+        <label for="end_time">Ends</label>
+        <input type="datetime-local" id="end_time" name="end_time" required
+               value="{{ form.get('end_time', '') }}">
+
+        <label for="capacity">Capacity</label>
+        <input type="number" id="capacity" name="capacity" min="1" required
+               value="{{ form.get('capacity', '') }}">
+
+        <button type="submit" class="button">Save</button>
+        <a href="{{ url_for('admin.list_events') }}" class="button button-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

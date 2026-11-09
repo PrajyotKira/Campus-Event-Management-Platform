@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Venues | Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Venues</h1>
+    <a class="button" href="{{ url_for('admin.create_venue') }}">+ New venue</a>
+</div>
+
+{% if venues %}
+<div class="table-wrap">
+<table class="table">
+    <thead>
+        <tr><th>Name</th><th>Location</th><th>Capacity</th><th>Events</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    {% for v in venues %}
+        <tr>
+            <td>{{ v.name }}</td>
+            <td>{{ v.location }}</td>
+            <td>{{ v.capacity }}</td>
+            <td>{{ v.event_count }}</td>
+            <td class="actions">
+                <a href="{{ url_for('admin.edit_venue', venue_id=v.id) }}">Edit</a>
+                {# Delete is a POST form; confirm() asks "are you sure?" in the browser first #}
+                <form method="post" class="inline-form"
+                      action="{{ url_for('admin.delete_venue', venue_id=v.id) }}"
+                      onsubmit="return confirm('Delete this venue?');">
+                    <button type="submit" class="button button-small button-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p>No venues yet.</p>
+{% endif %}
+{% endblock %}

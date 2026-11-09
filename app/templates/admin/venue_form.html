@@ -1,0 +1,25 @@
+{# One form for both "new venue" and "edit venue". venue_id is None when creating. #}
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit venue" if venue_id else "New venue" }} | Admin{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h1>{{ "Edit venue" if venue_id else "New venue" }}</h1>
+    <form method="post">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required value="{{ form.get('name', '') }}">
+
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location" required
+               value="{{ form.get('location', '') }}">
+
+        <label for="capacity">Capacity</label>
+        <input type="number" id="capacity" name="capacity" min="1" required
+               value="{{ form.get('capacity', '') }}">
+
+        <button type="submit" class="button">Save</button>
+        <a href="{{ url_for('admin.list_venues') }}" class="button button-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

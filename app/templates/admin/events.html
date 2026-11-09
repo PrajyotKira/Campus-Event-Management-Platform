@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Events | Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>All events</h1>
+    <a class="button" href="{{ url_for('admin.create_event') }}">+ New event</a>
+</div>
+
+{% if events %}
+<div class="table-wrap">
+<table class="table">
+    <thead>
+        <tr><th>Title</th><th>Category</th><th>Start</th><th>Venue</th>
+            <th>Registered</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    {% for e in events %}
+        <tr>
+            <td><a href="{{ url_for('events.event_detail', event_id=e.id) }}">{{ e.title }}</a></td>
+            <td>{{ e.category }}</td>
+            <td>{{ e.start_time }}</td>
+            <td>{{ e.venue_name }}</td>
+            <td>{{ e.registered }} / {{ e.capacity }}</td>
+            <td class="actions">
+                <a href="{{ url_for('admin.participants', event_id=e.id) }}">Participants</a>
+                <a href="{{ url_for('admin.edit_event', event_id=e.id) }}">Edit</a>
+                <form method="post" class="inline-form"
+                      action="{{ url_for('admin.delete_event', event_id=e.id) }}"
+                      onsubmit="return confirm('Delete this event and all its registrations?');">
+                    <button type="submit" class="button button-small button-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p>No events yet.</p>
+{% endif %}
+{% endblock %}
