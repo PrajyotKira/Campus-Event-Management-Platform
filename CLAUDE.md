@@ -40,7 +40,20 @@ scripts/        common.sh, setup.sh, run.sh, seed.sh, test.sh, profile.sh
 tests/  profiling/  report/
 instance/       campus.db lives here (git-ignored)
 ```
-DB CLI commands (in `app/db.py`): `flask --app app init-db`, `flask --app app create-admin`.
+Flask CLI commands (always run as `python -m flask --app app ...`; the `flask.exe`
+launcher is blocked on this machine): `init-db`, `create-admin` (in `app/db.py`),
+`seed --events N --students M` (in `app/seed.py`, fixed random seed, keeps admins).
+
+Blueprints: `auth` (/auth/register, /auth/login, /auth/logout), `events` (/events/,
+/events/<id>), `admin` (/admin/, protected by `admin_required` from `auth.py`).
+Times are stored as TEXT 'YYYY-MM-DD HH:MM'. `CATEGORIES` list lives in `app/events.py`.
+
+Demo logins after `./scripts/setup.sh && ./scripts/seed.sh`:
+admin `admin@campus.local` / `admin123`, students `student1..100@campus.local` / `student123`.
+
+Tests: `pytest.ini` sets `pythonpath = .`; fixtures in `tests/conftest.py`
+(`app` on a tmp_path DB, `client`, `auth`, `admin_user`, `sample_events`).
+Gotcha: Jinja parses `{% %}` even inside HTML `<!-- -->` comments, so use `{# #}`.
 
 ## Features (planned)
 - Student: register/login, browse events, search/filter (keyword, category, date, venue),
@@ -51,8 +64,10 @@ DB CLI commands (in `app/db.py`): `flask --app app init-db`, `flask --app app cr
 
 ## Progress
 - [x] Phase 1: skeleton, schema, setup/run scripts, app factory, homepage
-- [ ] Phase 2: auth (Flask-Login), events browse/search, registrations
-- [ ] Phase 3: admin CRUD, clash check, CSV export, reports
-- [ ] Phase 4: seed.sh (Faker), tests (pytest), test.sh
+- [x] Phase 2: auth (Flask-Login, admin_required), events browse/search/detail,
+      seed.sh (Faker), first pytest tests + test.sh, placeholder admin dashboard
+- [ ] Phase 3: student register/cancel (capacity check) + My registrations;
+      admin CRUD events & venues, clash check, participant CSV export, reports
+- [ ] Phase 4: more tests (registrations, capacity, clashes, admin CRUD)
 - [ ] Phase 5: profiling (cProfile) + indexes, before/after
 - [ ] Phase 6: README, LaTeX report, Beamer slides
